@@ -1,8 +1,8 @@
 {
-  "versionCode": 16,
-  "versionName": "0.11.2",
-  "apkUrl": "https://github.com/Zxxy326/TV-Music/releases/download/v0.11.2-m3b2/TV-Music-0.11.2-public.apk",
-  "sha256": "5377c31cfc3a7049cf99e518961f8a0c851c975af315c1162efa8ef1d83a051a",
-  "sizeBytes": 67934564,
-  "notes": "0.11.2：播放队列支持上移/下移/置顶/删除，搜索结果可下一首播放或加入队列；全局字体更换为阿里妈妈方圆体，修复底栏曲目信息方框、焦点框顶部裁切与内部直角残影。"
+  "versionCode": 17,
+  "versionName": "0.11.3",
+  "apkUrl": "https://github.com/Zxxy326/TV-Music/releases/download/v0.11.3-m3b2/TV-Music-0.11.3-public.apk",
+  "sha256": "877076b0319eda54ed2100b04b5ecdd22144e51ad555a3bf6ec883f99e517512",
+  "sizeBytes": 68016484,
+  "notes": "0.11.3：首页接入 QQ 热歌/飙升与网易云热歌/飙升真实榜单，并按本地收藏生成推荐；本地音乐支持内嵌封面与内嵌歌词，未登录时在线封面也能正常显示；账号页支持直接粘贴 Cookie，音源市场放宽大文件安装。"
 }
