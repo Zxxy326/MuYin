@@ -1,8 +1,8 @@
 {
-  "versionCode": 15,
-  "versionName": "0.11.1",
-  "apkUrl": "https://gh-proxy.com/https://github.com/Zxxy326/TV-Music/releases/download/v0.11.1-m3b2/TV-Music-0.11.1-public.apk",
-  "sha256": "9734915b72e5a380677fe92af0029b80e92e86e009062f0931d164f29e9d84c6",
-  "sizeBytes": 64431032,
-  "notes": "0.11.1：修复首页早上/中午/下午仍显示“今晚听点什么”的问候语时段错误；仅保留动感涟漪、简约、精简时钟三种动效。"
+  "versionCode": 16,
+  "versionName": "0.11.2",
+  "apkUrl": "https://github.com/Zxxy326/TV-Music/releases/download/v0.11.2-m3b2/TV-Music-0.11.2-public.apk",
+  "sha256": "5377c31cfc3a7049cf99e518961f8a0c851c975af315c1162efa8ef1d83a051a",
+  "sizeBytes": 67934564,
+  "notes": "0.11.2：播放队列支持上移/下移/置顶/删除，搜索结果可下一首播放或加入队列；全局字体更换为阿里妈妈方圆体，修复底栏曲目信息方框、焦点框顶部裁切与内部直角残影。"
 }
