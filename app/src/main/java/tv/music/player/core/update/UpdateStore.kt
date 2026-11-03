@@ -540,6 +540,8 @@ class UpdateStore(context: Context) {
         val urls = linkedSetOf(configured)
         if (configured.contains("Zxxy326/TV-Music")) {
             urls += "https://raw.githubusercontent.com/Zxxy326/TV-Music/main/update.json"
+            urls += "https://gcore.jsdelivr.net/gh/Zxxy326/TV-Music@main/update.json"
+            urls += "https://fastly.jsdelivr.net/gh/Zxxy326/TV-Music@main/update.json"
             urls += "https://testingcf.jsdelivr.net/gh/Zxxy326/TV-Music@main/update.json"
             urls += "https://cdn.jsdelivr.net/gh/Zxxy326/TV-Music@main/update.json"
         }
