@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -295,8 +296,12 @@ fun SearchScreen(
                     val unicode = event.nativeKeyEvent.unicodeChar
                     when {
                         event.key == Key.Menu -> {
-                            toggleInputMode()
-                            true
+                            if (results == null) {
+                                toggleInputMode()
+                                true
+                            } else {
+                                false
+                            }
                         }
                         event.key == Key.Backspace -> {
                             backspace()
@@ -337,7 +342,11 @@ fun SearchScreen(
                             Keycap("MENU")
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                if (pinyinMode) "拼音输入" else "数字输入",
+                                when {
+                                    results != null -> "歌曲操作"
+                                    pinyinMode -> "拼音输入"
+                                    else -> "数字输入"
+                                },
                                 style = TvType.caption,
                                 color = TvColors.TextTertiary,
                             )
@@ -413,6 +422,16 @@ fun SearchScreen(
                                 },
                                 onLoadMore = ::loadMore,
                                 onPlay = playTrack,
+                                onPlayNext = { track ->
+                                    capsule.show(
+                                        if (playback.playNext(track)) "已设为下一首" else "这首歌正在播放"
+                                    )
+                                },
+                                onAddToQueue = { track ->
+                                    capsule.show(
+                                        if (playback.addToQueue(track)) "已加入队列" else "队列里已经有这首歌"
+                                    )
+                                },
                             )
                             else -> T9Panel(
                                 group = group,
@@ -741,7 +760,20 @@ private fun ResultsPanel(
     onBackToKeyboard: () -> Unit,
     onLoadMore: () -> Unit,
     onPlay: (DemoTrack) -> Unit,
+    onPlayNext: (DemoTrack) -> Unit,
+    onAddToQueue: (DemoTrack) -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
+    var actionFor by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(actionFor) {
+        if (actionFor != null) group.focusWhenReady("results:action:next", timeoutMs = 1_000L)
+    }
+    fun focusRow(index: Int) {
+        scope.launch {
+            listState.animateScrollToItem(index.coerceAtLeast(0))
+            group.focusWhenReady("results:$index", timeoutMs = 1_500L)
+        }
+    }
     Column(Modifier.fillMaxSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("搜索结果", style = TvType.title, color = TvColors.TextPrimary)
@@ -761,6 +793,42 @@ private fun ResultsPanel(
             )
         }
         Spacer(Modifier.height(10.dp))
+        val actionIndex = actionFor
+        val actionTrack = actionIndex?.let { tracks.getOrNull(it) }
+        if (actionIndex != null && actionTrack != null) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ActionChip(
+                    label = "下一首播放",
+                    group = group,
+                    focusKey = "results:action:next",
+                    onClick = {
+                        actionFor = null
+                        onPlayNext(actionTrack)
+                        focusRow(actionIndex)
+                    },
+                )
+                ActionChip(
+                    label = "加入队列",
+                    group = group,
+                    focusKey = "results:action:queue",
+                    onClick = {
+                        actionFor = null
+                        onAddToQueue(actionTrack)
+                        focusRow(actionIndex)
+                    },
+                )
+                ActionChip(
+                    label = "取消",
+                    group = group,
+                    focusKey = "results:action:cancel",
+                    onClick = {
+                        actionFor = null
+                        focusRow(actionIndex)
+                    },
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+        }
         if (tracks.isEmpty()) {
             Text(
                 "没有找到歌曲，换个关键词试试",
@@ -779,6 +847,14 @@ private fun ResultsPanel(
                         group = group,
                         focusKey = "results:$index",
                         onClick = { onPlay(track) },
+                        onKeyEvent = { event ->
+                            if (event.type == KeyEventType.KeyDown && event.key == Key.Menu) {
+                                actionFor = index
+                                true
+                            } else {
+                                false
+                            }
+                        },
                     )
                 }
                 item(key = "results-more") {
@@ -830,6 +906,7 @@ private fun ResultRow(
     group: TvFocusGroup,
     focusKey: String,
     onClick: () -> Unit,
+    onKeyEvent: ((KeyEvent) -> Boolean)? = null,
 ) {
     TvSurface(
         modifier = Modifier.fillMaxWidth().height(68.dp),
@@ -840,6 +917,7 @@ private fun ResultRow(
         group = group,
         focusKey = focusKey,
         onClick = onClick,
+        onKeyEvent = onKeyEvent,
     ) {
         Row(
             Modifier.fillMaxSize().padding(horizontal = 12.dp),

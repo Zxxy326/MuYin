@@ -26,6 +26,7 @@ import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import tv.music.player.core.focus.TvFocusGroup
 import tv.music.player.core.focus.TvSurface
@@ -230,6 +231,19 @@ fun QueueRow(
                     style = TvType.caption,
                     color = TvColors.TextSecondary,
                     maxLines = 1,
+                )
+            }
+            val sourceLabel = when {
+                track.isLocal -> "本地"
+                track.onlineSource.isNotBlank() -> track.onlineSource.uppercase()
+                else -> ""
+            }
+            if (sourceLabel.isNotEmpty()) {
+                Text(
+                    sourceLabel,
+                    style = TvType.caption.copy(fontSize = 10.sp),
+                    color = TvColors.TextTertiary,
+                    modifier = Modifier.padding(end = 8.dp),
                 )
             }
             if (isCurrent) {
