@@ -1,8 +1,8 @@
 {
-  "versionCode": 14,
-  "versionName": "0.11.0",
-  "apkUrl": "https://gh-proxy.com/https://github.com/Zxxy326/TV-Music/releases/download/v0.11.0-m3b2/TV-Music-0.11.0-public.apk",
-  "sha256": "f17db0a83da229969fec495736e8fff18734085b5620ecc613dd3ac7d0bcedf4",
+  "versionCode": 15,
+  "versionName": "0.11.1",
+  "apkUrl": "https://gh-proxy.com/https://github.com/Zxxy326/TV-Music/releases/download/v0.11.1-m3b2/TV-Music-0.11.1-public.apk",
+  "sha256": "9734915b72e5a380677fe92af0029b80e92e86e009062f0931d164f29e9d84c6",
   "sizeBytes": 64431032,
-  "notes": "0.11.0：只保留动感涟漪、简约、精简时钟三种横屏歌词动效；歌曲封面动态取色与模糊背景，播放页 5 秒自动沉浸，动效全屏铺满。"
+  "notes": "0.11.1：修复首页早上/中午/下午仍显示“今晚听点什么”的问候语时段错误；仅保留动感涟漪、简约、精简时钟三种动效。"
 }

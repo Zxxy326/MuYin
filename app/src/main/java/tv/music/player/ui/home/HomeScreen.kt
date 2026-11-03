@@ -413,7 +413,8 @@ private fun HomeHeader(
                 Text("TV MUSIC · M3b2", style = TvType.tracking, color = accent)
             }
             Spacer(Modifier.height(6.dp))
-            Text("$greeting，今晚听点什么？", style = TvType.display, color = TvColors.TextPrimary)
+            val prompt = if (greeting == "晚上好") "今晚听点什么？" else "今天想听点什么？"
+            Text("$greeting，$prompt", style = TvType.display, color = TvColors.TextPrimary)
         }
         Spacer(Modifier.weight(1f))
         NetworkPill(online)
