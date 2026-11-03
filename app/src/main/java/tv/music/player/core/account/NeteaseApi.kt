@@ -138,7 +138,7 @@ class NeteaseApi {
                             id = id.toString(),
                             name = name,
                             trackCount = item.optInt("trackCount", 0),
-                            coverUrl = item.optString("coverImgUrl"),
+                            coverUrl = httpsUrl(item.optString("coverImgUrl")),
                         )
                     )
                 }
@@ -210,7 +210,7 @@ class NeteaseApi {
         }.joinToString(", ").ifBlank { "未知歌手" }
         val albumObj = song.optJSONObject("al") ?: song.optJSONObject("album")
         val album = albumObj?.optString("name").orEmpty()
-        val cover = albumObj?.optString("picUrl").orEmpty()
+        val cover = httpsUrl(albumObj?.optString("picUrl").orEmpty())
         val duration = song.optLong("dt", song.optLong("duration", 0L)).coerceAtLeast(0L)
         val hash = abs(songId.hashCode()).coerceAtLeast(1)
         return DemoTrack(
@@ -225,6 +225,11 @@ class NeteaseApi {
             onlineSongId = songId.toString(),
             onlineSongNumericId = songId,
         )
+    }
+
+    private fun httpsUrl(value: String): String {
+        val url = value.trim()
+        return if (url.startsWith("http://")) "https://" + url.removePrefix("http://") else url
     }
 
     private fun getJson(url: HttpUrl, cookies: Map<String, String>): JSONObject {

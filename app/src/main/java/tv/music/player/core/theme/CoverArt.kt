@@ -29,6 +29,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import tv.music.player.core.lyrics.EmbeddedTags
 import java.util.concurrent.TimeUnit
 
 class CoverArt(val image: ImageBitmap, val accent: Color)
@@ -92,18 +93,39 @@ private fun loadCover(context: Context, url: String): CoverArt? = runCatching {
     CoverArt(bitmap.asImageBitmap(), accent)
 }.getOrNull()
 
-private fun decodeHttp(url: String): Bitmap? = runCatching {
-    val request = Request.Builder()
-        .url(url)
-        .header("User-Agent", "TVMusic/1.0")
-        .build()
-    coverClient.newCall(request).execute().use { response ->
-        if (!response.isSuccessful) return null
-        val bytes = response.body.bytes()
-        if (bytes.size < 256 || bytes.size > 12 * 1024 * 1024) return null
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+private fun decodeHttp(url: String): Bitmap? {
+    for (candidate in coverMirrors(url)) {
+        val bitmap = runCatching {
+            val request = Request.Builder()
+                .url(candidate)
+                .header("User-Agent", "TVMusic/1.0")
+                .build()
+            coverClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                val bytes = response.body.bytes()
+                if (bytes.size < 256 || bytes.size > 12 * 1024 * 1024) return@use null
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            }
+        }.getOrNull()
+        if (bitmap != null) return bitmap
     }
-}.getOrNull()
+    return null
+}
+
+private fun coverMirrors(raw: String): List<String> {
+    val url = raw.trim()
+    if (url.isBlank()) return emptyList()
+    val https = if (url.startsWith("http://")) {
+        "https://" + url.removePrefix("http://")
+    } else {
+        url
+    }
+    val mirrors = linkedSetOf(https)
+    if (https.contains("y.gtimg.cn/")) {
+        mirrors += https.replace("y.gtimg.cn", "y.qq.com")
+    }
+    return mirrors.toList()
+}
 
 private fun decodeLocal(context: Context, url: String): Bitmap? {
     val uri = Uri.parse(url)
@@ -118,6 +140,10 @@ private fun decodeLocal(context: Context, url: String): Bitmap? {
         }
     }.getOrNull()
     if (embedded != null) return embedded
+    val tagged = runCatching {
+        EmbeddedTags.read(context, url).picture?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+    }.getOrNull()
+    if (tagged != null) return tagged
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         return runCatching {
             context.contentResolver.loadThumbnail(uri, Size(512, 512), null)

@@ -27,7 +27,7 @@ class LyricsRepository(
                 cache.put(localKey, local)
                 LyricsState.Ready(local)
             } else {
-                LyricsState.Unavailable("未找到同名 .lrc 歌词")
+                LyricsState.Unavailable("未找到本地或内嵌歌词")
             }
         }
         if (!track.isOnline) {

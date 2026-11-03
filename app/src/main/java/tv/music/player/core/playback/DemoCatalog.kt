@@ -22,7 +22,11 @@ data class DemoTrack(
     val usesPlayer: Boolean get() = isOnline || isLocal
     val artworkUrl: String
         get() = coverUrl.ifBlank {
-            localUri.takeIf { it.startsWith("content://") || it.startsWith("file://") }.orEmpty()
+            when {
+                onlineSource == "tx" && onlineAlbumMid.isNotBlank() ->
+                    "https://y.gtimg.cn/music/photo_new/T002R300x300M000$onlineAlbumMid.jpg"
+                else -> localUri.takeIf { it.startsWith("content://") || it.startsWith("file://") }.orEmpty()
+            }
         }
 }
 

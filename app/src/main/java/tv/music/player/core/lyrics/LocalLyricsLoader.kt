@@ -20,14 +20,19 @@ object LocalLyricsLoader {
     suspend fun load(context: Context, track: DemoTrack): Lyrics? = withContext(Dispatchers.IO) {
         if (track.localUri.isBlank()) return@withContext null
         val uri = runCatching { Uri.parse(track.localUri) }.getOrNull() ?: return@withContext null
-        val raw = when {
+        val sidecar = when {
             uri.scheme == "file" -> readSidecar(File(uri.path.orEmpty()))
             uri.authority == MediaStore.AUTHORITY -> readMediaStoreSibling(context, uri)
             uri.scheme == "content" -> readSafSibling(context, uri)
             else -> null
-        } ?: return@withContext null
+        }
+        val raw = sidecar ?: EmbeddedTags.read(context, track.localUri).lyrics ?: return@withContext null
         val lyrics = LrcParser.parse(raw)
-        if (lyrics.lines.isEmpty()) null else lyrics.copy(sourceLabel = "本地歌词")
+        if (lyrics.lines.isEmpty()) {
+            null
+        } else {
+            lyrics.copy(sourceLabel = if (sidecar != null) "本地歌词" else "内嵌歌词")
+        }
     }
 
     private fun readMediaStoreSibling(context: Context, uri: Uri): String? {

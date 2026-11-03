@@ -6,16 +6,22 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,6 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.FileOpen
 import androidx.compose.material.icons.rounded.Logout
+import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,6 +42,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -65,6 +86,7 @@ import tv.music.player.core.theme.TvColors
 import tv.music.player.core.theme.TvType
 import tv.music.player.core.theme.rememberCoverArt
 import tv.music.player.ui.components.ActionChip
+import tv.music.player.ui.components.CapsuleHostState
 import tv.music.player.ui.components.ArtworkPlaceholder
 import tv.music.player.ui.components.KeyHintBar
 import tv.music.player.ui.components.LocalCapsuleHost
@@ -90,6 +112,7 @@ fun AccountScreen(
     val activeRoute = LocalActiveRoute.current
     val isActive = activeRoute == TvRoute.Account.route
     var armedLogout by remember { mutableStateOf<String?>(null) }
+    var cookieDialog by remember { mutableStateOf(false) }
 
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -217,6 +240,13 @@ fun AccountScreen(
                                 focusKey = "account:netease:cookie",
                                 onClick = { runCatching { importLauncher.launch(arrayOf("*/*")) } },
                             )
+                            ActionChip(
+                                label = "粘贴 Cookie",
+                                icon = Icons.Rounded.ContentPaste,
+                                group = group,
+                                focusKey = "account:netease:paste",
+                                onClick = { cookieDialog = true },
+                            )
                         },
                     )
                     ProviderCard(
@@ -233,6 +263,13 @@ fun AccountScreen(
                                 group = group,
                                 focusKey = "account:qq:cookie",
                                 onClick = { runCatching { importLauncher.launch(arrayOf("*/*")) } },
+                            )
+                            ActionChip(
+                                label = "粘贴 Cookie",
+                                icon = Icons.Rounded.ContentPaste,
+                                group = group,
+                                focusKey = "account:qq:paste",
+                                onClick = { cookieDialog = true },
                             )
                             if (state.qq != null) {
                                 ActionChip(
@@ -292,6 +329,19 @@ fun AccountScreen(
                 )
                 Spacer(Modifier.height(12.dp))
             }
+        }
+        if (cookieDialog) {
+            CookiePasteDialog(
+                onDismiss = { cookieDialog = false },
+                onImport = { raw ->
+                    if (raw.length > MAX_COOKIE_FILE) {
+                        capsule.show("Cookie 内容过长")
+                    } else {
+                        store.importCookies(raw)
+                    }
+                },
+                capsule = capsule,
+            )
         }
     }
 }
@@ -525,5 +575,155 @@ private fun generateQrBitmap(text: String): Bitmap? = runCatching {
         setPixels(pixels, 0, size, 0, 0, size, size)
     }
 }.getOrNull()
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CookiePasteDialog(
+    onDismiss: () -> Unit,
+    onImport: (String) -> Unit,
+    capsule: CapsuleHostState,
+) {
+    val dialogGroup = rememberTvFocusGroup("cookie-paste")
+    val accent = LocalTvAccent.current
+    val clipboard = LocalClipboardManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    var text by remember { mutableStateOf("") }
+    var editing by remember { mutableStateOf(false) }
+    var fieldFocused by remember { mutableStateOf(false) }
+    var imeWasVisible by remember { mutableStateOf(false) }
+    val fieldRequester = remember { FocusRequester() }
+    val inputRequester = remember { FocusRequester() }
+    val imeVisible = WindowInsets.isImeVisible
+    LaunchedEffect(Unit) { dialogGroup.focusWhenReady("cookie:clipboard", timeoutMs = 800L) }
+    LaunchedEffect(editing) {
+        if (editing) {
+            inputRequester.requestFocus()
+            keyboard?.show()
+        }
+    }
+    LaunchedEffect(imeVisible) {
+        if (imeVisible) {
+            imeWasVisible = true
+        } else if (editing && imeWasVisible) {
+            imeWasVisible = false
+            editing = false
+            fieldRequester.requestFocus()
+        }
+    }
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            Modifier.fillMaxSize().padding(24.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            TvSurface(
+                modifier = Modifier.width(820.dp),
+                shape = RoundedCornerShape(20.dp),
+                baseColor = TvColors.SurfaceElevated,
+                focusedScale = 1f,
+                glowSize = 0.dp,
+                showBorder = false,
+            ) {
+                Column(Modifier.fillMaxWidth().padding(22.dp)) {
+                    Text("粘贴 Cookie", style = TvType.title, color = TvColors.TextPrimary)
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "支持整段请求头（网易云 MUSIC_U=…，QQ qm_keyst=…），也支持 {\"netease\":\"…\",\"qq\":\"…\"}",
+                        style = TvType.caption,
+                        color = TvColors.TextTertiary,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(140.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(TvColors.Surface)
+                            .border(
+                                1.dp,
+                                if (fieldFocused) accent else TvColors.Divider,
+                                RoundedCornerShape(12.dp),
+                            )
+                            .focusRequester(fieldRequester)
+                            .onFocusChanged { fieldFocused = it.hasFocus }
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                            ) { editing = true }
+                            .padding(12.dp)
+                    ) {
+                        if (!editing) {
+                            Text(
+                                text.ifBlank { "在这里粘贴 Cookie，或先复制到剪贴板再按“读剪贴板”" },
+                                style = TvType.body,
+                                color = if (text.isBlank()) TvColors.TextTertiary else TvColors.TextPrimary,
+                                maxLines = 4,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        } else {
+                            if (text.isBlank()) {
+                                Text(
+                                    "在这里粘贴 Cookie，或先复制到剪贴板再按“读剪贴板”",
+                                    style = TvType.body,
+                                    color = TvColors.TextTertiary,
+                                )
+                            }
+                            BasicTextField(
+                                value = text,
+                                onValueChange = { text = it.take(MAX_COOKIE_FILE) },
+                                textStyle = TvType.body.copy(color = TvColors.TextPrimary),
+                                cursorBrush = SolidColor(accent),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .focusRequester(inputRequester),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ActionChip(
+                            label = "读剪贴板",
+                            icon = Icons.Rounded.ContentPaste,
+                            group = dialogGroup,
+                            focusKey = "cookie:clipboard",
+                            onClick = {
+                                val clip = clipboard.getText()?.text?.trim().orEmpty()
+                                if (clip.isBlank()) {
+                                    capsule.show("剪贴板是空的")
+                                } else {
+                                    text = clip.take(MAX_COOKIE_FILE)
+                                    capsule.show("已读取剪贴板")
+                                }
+                            },
+                        )
+                        ActionChip(
+                            label = "导入",
+                            group = dialogGroup,
+                            focusKey = "cookie:import",
+                            primary = true,
+                            onClick = {
+                                val value = text.trim()
+                                if (value.isBlank()) {
+                                    capsule.show("请先粘贴 Cookie")
+                                } else {
+                                    onImport(value)
+                                    onDismiss()
+                                }
+                            },
+                        )
+                        ActionChip(
+                            label = "取消",
+                            group = dialogGroup,
+                            focusKey = "cookie:cancel",
+                            onClick = onDismiss,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
 
 private const val MAX_COOKIE_FILE = 64 * 1024
