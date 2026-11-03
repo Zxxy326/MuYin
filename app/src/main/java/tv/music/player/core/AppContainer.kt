@@ -52,6 +52,7 @@ class AppContainer(context: Context) {
     val onlineSearch = OnlineSearchApi()
     val searchHistory = SearchHistoryStore(appContext)
     val lyrics = LyricsRepository(
+        context = appContext,
         diskCache = LyricsDiskCache(File(appContext.cacheDir, "lyrics")),
         matchStore = LyricsMatchStore(appContext),
         searchApi = onlineSearch,

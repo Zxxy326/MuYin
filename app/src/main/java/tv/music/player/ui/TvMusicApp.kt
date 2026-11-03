@@ -53,7 +53,7 @@ fun TvMusicApp() {
     val container = (context.applicationContext as TvMusicApplication).container
     val settings by container.settings.settings.collectAsStateWithLifecycle(initialValue = AppSettings())
     val playbackState by container.playback.state.collectAsStateWithLifecycle()
-    val coverArt = rememberCoverArt(playbackState.track.coverUrl)
+    val coverArt = rememberCoverArt(playbackState.track.artworkUrl)
     val accent by animateColorAsState(
         targetValue = accentFor(settings.accentMode, coverArt.accent),
         animationSpec = tween(if (settings.animationsEnabled) 420 else 0),
@@ -141,6 +141,9 @@ fun TvMusicApp() {
                         )
                         MiniPlayerBar(
                             playback = container.playback,
+                            lyricsRepository = container.lyrics,
+                            library = container.library,
+                            offsetMs = settings.lyricOffsetMs,
                             onOpenPlayer = {
                                 navController.navigate(TvRoute.Player.route) { launchSingleTop = true }
                             },

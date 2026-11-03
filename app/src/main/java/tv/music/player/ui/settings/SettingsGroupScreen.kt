@@ -497,7 +497,7 @@ private fun buildEntries(
             SettingEntry.Action(
                 key = "qq",
                 title = "QQ 音乐",
-                subtitle = "Cookie 导入；扫码与歌单接口待验证",
+                subtitle = "Cookie 导入、我的歌单与整单播放",
                 value = "Cookie",
                 onClick = onOpenAccount,
             ),

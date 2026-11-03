@@ -38,7 +38,7 @@ import tv.music.player.core.theme.LocalTvAccent
 import tv.music.player.core.theme.TvColors
 import tv.music.player.core.theme.TvType
 import tv.music.player.ui.components.ActionChip
-import tv.music.player.ui.components.ArtworkPlaceholder
+import tv.music.player.ui.components.TrackArtwork
 import tv.music.player.ui.components.KeyHintBar
 import tv.music.player.ui.components.ScreenHeader
 import tv.music.player.ui.components.TvBackdrop
@@ -50,13 +50,14 @@ import tv.music.player.ui.navigation.TvRoute
 fun AccountPlaylistScreen(
     store: AccountStore,
     playback: PlaybackController,
+    provider: String,
     playlistId: String,
     navController: NavHostController,
 ) {
     val group = rememberTvFocusGroup("account-playlist")
     val accent = LocalTvAccent.current
     val state by store.state.collectAsStateWithLifecycle()
-    val playlist = state.playlists.firstOrNull { it.id == playlistId }
+    val playlist = state.playlists.firstOrNull { it.id == playlistId && it.provider == provider }
     val activeRoute = LocalActiveRoute.current
     val isActive = activeRoute == TvRoute.AccountPlaylist.route
     val tracks = playlist?.let(store::playlistTracks).orEmpty()
@@ -84,7 +85,9 @@ fun AccountPlaylistScreen(
             Column(Modifier.fillMaxSize()) {
                 ScreenHeader(
                     title = playlist?.name ?: "歌单",
-                    subtitle = playlist?.let { "网易云 · ${it.trackCount} 首" } ?: "我的歌单",
+                    subtitle = playlist?.let {
+                        "${if (it.provider == "qq") "QQ 音乐" else "网易云"} · ${it.trackCount} 首"
+                    } ?: "我的歌单",
                     group = group,
                     onBack = { navController.popBackStack() },
                     trailing = {
@@ -188,8 +191,8 @@ private fun TrackRow(
                 color = TvColors.TextTertiary,
                 modifier = Modifier.width(26.dp),
             )
-            ArtworkPlaceholder(
-                seed = track.colorSeed,
+            TrackArtwork(
+                track = track,
                 modifier = Modifier.size(38.dp),
                 corner = 9.dp,
             )

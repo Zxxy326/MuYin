@@ -17,8 +17,9 @@ sealed class TvRoute(val route: String) {
         fun of(tag: String): String = "sources/market/${Uri.encode(tag)}"
     }
     data object Account : TvRoute("account")
-    data object AccountPlaylist : TvRoute("account/playlist/{id}") {
-        fun of(id: String): String = "account/playlist/${Uri.encode(id)}"
+    data object AccountPlaylist : TvRoute("account/playlist/{provider}/{id}") {
+        fun of(provider: String, id: String): String =
+            "account/playlist/${Uri.encode(provider)}/${Uri.encode(id)}"
     }
     data object Settings : TvRoute("settings")
     data object SettingsGroup : TvRoute("settings/{groupId}") {

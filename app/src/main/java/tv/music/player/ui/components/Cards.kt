@@ -52,8 +52,8 @@ fun PosterCard(
         onClick = onClick,
     ) {
         Column(Modifier.padding(8.dp)) {
-            ArtworkPlaceholder(
-                seed = track.colorSeed,
+            TrackArtwork(
+                track = track,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(width - 16.dp),
@@ -103,7 +103,7 @@ fun WideCard(
                 .padding(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ArtworkPlaceholder(track.colorSeed, Modifier.size(74.dp), corner = 10.dp)
+            TrackArtwork(track, Modifier.size(74.dp), corner = 10.dp)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(
@@ -239,6 +239,6 @@ fun QueueRow(
 @Composable
 fun QueueHeaderArtwork(track: DemoTrack, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxHeight()) {
-        ArtworkPlaceholder(track.colorSeed, Modifier.fillMaxSize(), corner = 12.dp, showNote = false)
+        TrackArtwork(track, Modifier.fillMaxSize(), corner = 12.dp)
     }
 }

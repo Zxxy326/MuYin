@@ -141,7 +141,7 @@ import tv.music.player.core.theme.TvColors
 import tv.music.player.core.theme.TvType
 import tv.music.player.core.theme.rememberCoverArt
 import tv.music.player.ui.components.ActionChip
-import tv.music.player.ui.components.ArtworkPlaceholder
+import tv.music.player.ui.components.TrackArtwork
 import tv.music.player.ui.components.KeyHintBar
 import tv.music.player.ui.components.LocalCapsuleHost
 import tv.music.player.ui.components.ProgressLine
@@ -165,7 +165,7 @@ fun PlayerScreen(
     val isFavorite = favorites.any { it.libraryKey() == snapshot.track.libraryKey() }
     val downloadEntries by downloads.entries.collectAsStateWithLifecycle()
     val downloadEntry = downloadEntries.firstOrNull { it.key == snapshot.track.libraryKey() }
-    val cover = rememberCoverArt(snapshot.track.coverUrl)
+    val cover = rememberCoverArt(snapshot.track.artworkUrl)
     val accent = LocalTvAccent.current
     val capsule = LocalCapsuleHost.current
     val group = rememberTvFocusGroup("player")
@@ -817,7 +817,12 @@ private fun LyricsView(
         )
         is LyricsState.Unavailable -> LyricsMessage(
             title = state.message,
-            subtitle = if (state.message.contains("纯音乐")) "这首歌没有填词" else "按 MENU 可重新获取",
+            subtitle = when {
+                state.message.contains("纯音乐") -> "这首歌没有填词"
+                state.message.contains("本地") || state.message.contains(".lrc") ->
+                    "把同名 .lrc 放到歌曲旁边，按 MENU 重载"
+                else -> "按 MENU 可重新获取"
+            },
             scale = scale,
         )
         is LyricsState.Ready -> {
@@ -1942,7 +1947,7 @@ private fun ControlsPanel(
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 26.dp, vertical = 18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                ArtworkPlaceholder(snapshot.track.colorSeed, Modifier.size(58.dp), corner = 12.dp)
+                TrackArtwork(snapshot.track, Modifier.size(58.dp), corner = 12.dp)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
                     Text(

@@ -1,12 +1,17 @@
 package tv.music.player.core.theme
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Shader
+import android.media.MediaMetadataRetriever
+import android.net.Uri
+import android.os.Build
 import android.util.LruCache
+import android.util.Size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -17,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.graphics.ColorUtils
 import androidx.palette.graphics.Palette
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +34,7 @@ import java.util.concurrent.TimeUnit
 class CoverArt(val image: ImageBitmap, val accent: Color)
 
 private val coverCache = object : LruCache<String, CoverArt>(16) {}
+private val fallbackCoverArt: CoverArt by lazy { buildCoverArt() }
 private val coverClient = OkHttpClient.Builder()
     .connectTimeout(8, TimeUnit.SECONDS)
     .readTimeout(12, TimeUnit.SECONDS)
@@ -35,7 +42,8 @@ private val coverClient = OkHttpClient.Builder()
 
 @Composable
 fun rememberCoverArt(url: String? = null): CoverArt {
-    val fallback = remember { buildCoverArt() }
+    val fallback = fallbackCoverArt
+    val context = LocalContext.current.applicationContext
     var art by remember(url) { mutableStateOf(url?.let(coverCache::get) ?: fallback) }
     LaunchedEffect(url) {
         val target = url?.trim().orEmpty()
@@ -47,7 +55,7 @@ fun rememberCoverArt(url: String? = null): CoverArt {
             art = it
             return@LaunchedEffect
         }
-        val loaded = withContext(Dispatchers.IO) { loadCover(target) }
+        val loaded = withContext(Dispatchers.IO) { loadCover(context, target) }
         if (loaded != null) {
             coverCache.put(target, loaded)
             art = loaded
@@ -56,7 +64,35 @@ fun rememberCoverArt(url: String? = null): CoverArt {
     return art
 }
 
-private fun loadCover(url: String): CoverArt? = runCatching {
+private fun loadCover(context: Context, url: String): CoverArt? = runCatching {
+    val decoded = if (url.startsWith("content://") || url.startsWith("file://")) {
+        decodeLocal(context, url)
+    } else {
+        decodeHttp(url)
+    } ?: return null
+    val maxDim = 960
+    val bitmap = if (decoded.width > maxDim || decoded.height > maxDim) {
+        val ratio = maxDim.toFloat() / maxOf(decoded.width, decoded.height)
+        Bitmap.createScaledBitmap(
+            decoded,
+            (decoded.width * ratio).toInt().coerceAtLeast(1),
+            (decoded.height * ratio).toInt().coerceAtLeast(1),
+            true,
+        )
+    } else {
+        decoded
+    }
+    val scaled = Bitmap.createScaledBitmap(bitmap, 96, 96, true)
+    val palette = Palette.from(scaled).maximumColorCount(16).generate()
+    val swatch = palette.vibrantSwatch
+        ?: palette.lightVibrantSwatch
+        ?: palette.mutedSwatch
+        ?: palette.dominantSwatch
+    val accent = normalizeAccent(Color(swatch?.rgb ?: 0xFF35D6C4.toInt()))
+    CoverArt(bitmap.asImageBitmap(), accent)
+}.getOrNull()
+
+private fun decodeHttp(url: String): Bitmap? = runCatching {
     val request = Request.Builder()
         .url(url)
         .header("User-Agent", "TVMusic/1.0")
@@ -65,34 +101,30 @@ private fun loadCover(url: String): CoverArt? = runCatching {
         if (!response.isSuccessful) return null
         val bytes = response.body.bytes()
         if (bytes.size < 256 || bytes.size > 12 * 1024 * 1024) return null
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-        var sample = 1
-        while (bounds.outWidth / sample > 960 || bounds.outHeight / sample > 960) sample *= 2
-        val options = BitmapFactory.Options().apply { inSampleSize = sample }
-        val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options) ?: return null
-        val maxDim = 960
-        val bitmap = if (decoded.width > maxDim || decoded.height > maxDim) {
-            val ratio = maxDim.toFloat() / maxOf(decoded.width, decoded.height)
-            Bitmap.createScaledBitmap(
-                decoded,
-                (decoded.width * ratio).toInt().coerceAtLeast(1),
-                (decoded.height * ratio).toInt().coerceAtLeast(1),
-                true,
-            )
-        } else {
-            decoded
-        }
-        val scaled = Bitmap.createScaledBitmap(bitmap, 96, 96, true)
-        val palette = Palette.from(scaled).maximumColorCount(16).generate()
-        val swatch = palette.vibrantSwatch
-            ?: palette.lightVibrantSwatch
-            ?: palette.mutedSwatch
-            ?: palette.dominantSwatch
-        val accent = normalizeAccent(Color(swatch?.rgb ?: 0xFF35D6C4.toInt()))
-        CoverArt(bitmap.asImageBitmap(), accent)
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
     }
 }.getOrNull()
+
+private fun decodeLocal(context: Context, url: String): Bitmap? {
+    val uri = Uri.parse(url)
+    val embedded = runCatching {
+        val retriever = MediaMetadataRetriever()
+        try {
+            if (uri.scheme == "file") retriever.setDataSource(uri.path)
+            else retriever.setDataSource(context, uri)
+            retriever.embeddedPicture?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+        } finally {
+            runCatching { retriever.release() }
+        }
+    }.getOrNull()
+    if (embedded != null) return embedded
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        return runCatching {
+            context.contentResolver.loadThumbnail(uri, Size(512, 512), null)
+        }.getOrNull()
+    }
+    return null
+}
 
 private fun buildCoverArt(): CoverArt {
     val size = 512

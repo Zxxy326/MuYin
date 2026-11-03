@@ -55,6 +55,7 @@ class AccountStore(context: Context) {
     private val prefs = appContext.getSharedPreferences("account_store", Context.MODE_PRIVATE)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val neteaseApi = NeteaseApi()
+    private val qqApi = QqPlaylistApi()
 
     private val neteaseCookies = mutableMapOf<String, String>()
     private val qqCookies = mutableMapOf<String, String>()
@@ -75,8 +76,9 @@ class AccountStore(context: Context) {
         if (!hasNetease && !hasQq) return
         _state.value = _state.value.copy(loading = true, error = null)
         scope.launch {
-            var error: String? = null
+            val errors = mutableListOf<String>()
             var netease: AccountProfile? = _state.value.netease
+            var qq: AccountProfile? = _state.value.qq
             var playlists = _state.value.playlists
             if (hasNetease) {
                 val result = runCatching {
@@ -88,27 +90,34 @@ class AccountStore(context: Context) {
                     netease = profile
                     playlists = playlists.filterNot { it.provider == NeteaseApi.PROVIDER } + list
                     saveProfile(profile)
-                    savePlaylists(playlists)
                 }.onFailure {
                     Log.w(TAG, "refresh netease failed: ${it.message}")
-                    error = "网易云：${friendly(it)}"
+                    errors += "网易云：${friendly(it)}"
                 }
             }
-            var qq = _state.value.qq
             if (hasQq) {
-                // QQ 歌单接口依赖网页 Cookie 签名，先保存登录态；歌单在后续接口验证后启用。
-                qq = _state.value.qq ?: AccountProfile(
-                    provider = "qq",
-                    uid = qqCookies["uin"].orEmpty().ifBlank { qqCookies["qqmusic_uin"].orEmpty() },
-                    nickname = "QQ 音乐已导入 Cookie",
-                )
+                val result = runCatching { qqApi.fetchAccount(qqCookies) }
+                result.onSuccess { account ->
+                    qq = account.profile
+                    playlists = playlists.filterNot { it.provider == QqPlaylistApi.PROVIDER } + account.playlists
+                    saveProfile(account.profile)
+                }.onFailure {
+                    Log.w(TAG, "refresh qq failed: ${it.message}")
+                    qq = qq ?: AccountProfile(
+                        provider = QqPlaylistApi.PROVIDER,
+                        uid = qqCookies["qqmusic_uin"].orEmpty().ifBlank { qqCookies["uin"].orEmpty() },
+                        nickname = "QQ 音乐已导入 Cookie",
+                    )
+                    errors += "QQ：${friendly(it)}"
+                }
             }
+            savePlaylists(playlists)
             _state.value = _state.value.copy(
                 loading = false,
                 netease = netease,
                 qq = qq,
                 playlists = playlists,
-                error = error,
+                error = errors.takeIf { it.isNotEmpty() }?.joinToString("；"),
             )
         }
     }
@@ -234,7 +243,14 @@ class AccountStore(context: Context) {
         } else {
             qqCookies.clear()
             prefs.edit().remove(KEY_QQ_COOKIES).remove(KEY_QQ_PROFILE).apply()
-            _state.value = _state.value.copy(qq = null, message = "已移除 QQ 音乐 Cookie")
+            val playlists = _state.value.playlists.filterNot { it.provider == QqPlaylistApi.PROVIDER }
+            savePlaylists(playlists)
+            _state.value = _state.value.copy(
+                qq = null,
+                playlists = playlists,
+                playlistTracks = _state.value.playlistTracks.filterNot { it.key.startsWith("qq:") },
+                message = "已移除 QQ 音乐 Cookie",
+            )
         }
     }
 
@@ -245,14 +261,19 @@ class AccountStore(context: Context) {
         _state.value = _state.value.copy(loadingPlaylistId = playlist.id, playlistError = null)
         scope.launch {
             try {
-                if (playlist.provider != NeteaseApi.PROVIDER) {
-                    throw IllegalStateException("QQ 歌单播放接口尚未验证")
+                val tracks = if (playlist.provider == QqPlaylistApi.PROVIDER) {
+                    qqApi.fetchPlaylistTracks(
+                        cookies = qqCookies,
+                        playlistId = playlist.id,
+                        fallbackName = playlist.name,
+                    )
+                } else {
+                    neteaseApi.fetchPlaylistTracks(
+                        cookies = neteaseCookies,
+                        playlistId = playlist.id,
+                        fallbackName = playlist.name,
+                    )
                 }
-                val tracks = neteaseApi.fetchPlaylistTracks(
-                    cookies = neteaseCookies,
-                    playlistId = playlist.id,
-                    fallbackName = playlist.name,
-                )
                 _state.value = _state.value.copy(
                     loadingPlaylistId = null,
                     playlistTracks = _state.value.playlistTracks + (key to tracks),

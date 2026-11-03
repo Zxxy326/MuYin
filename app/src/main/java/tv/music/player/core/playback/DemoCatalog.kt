@@ -20,6 +20,10 @@ data class DemoTrack(
     val isOnline: Boolean get() = onlineSource.isNotBlank()
     val isLocal: Boolean get() = localUri.isNotBlank()
     val usesPlayer: Boolean get() = isOnline || isLocal
+    val artworkUrl: String
+        get() = coverUrl.ifBlank {
+            localUri.takeIf { it.startsWith("content://") || it.startsWith("file://") }.orEmpty()
+        }
 }
 
 data class LyricLine(val timeMs: Long, val text: String)

@@ -152,18 +152,22 @@ fun TvNavHost(
             AccountScreen(
                 store = account,
                 onOpenPlaylist = { playlist ->
-                    navController.navigate(TvRoute.AccountPlaylist.of(playlist.id))
+                    navController.navigate(TvRoute.AccountPlaylist.of(playlist.provider, playlist.id))
                 },
                 onBack = { navController.popBackStack() },
             )
         }
         composable(
             route = TvRoute.AccountPlaylist.route,
-            arguments = listOf(navArgument("id") { type = NavType.StringType }),
+            arguments = listOf(
+                navArgument("provider") { type = NavType.StringType },
+                navArgument("id") { type = NavType.StringType },
+            ),
         ) { entry ->
             AccountPlaylistScreen(
                 store = account,
                 playback = playback,
+                provider = entry.arguments?.getString("provider").orEmpty(),
                 playlistId = entry.arguments?.getString("id").orEmpty(),
                 navController = navController,
             )

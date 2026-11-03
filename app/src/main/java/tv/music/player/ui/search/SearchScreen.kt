@@ -74,7 +74,7 @@ import tv.music.player.core.theme.LocalTvAccent
 import tv.music.player.core.theme.TvColors
 import tv.music.player.core.theme.TvType
 import tv.music.player.ui.components.ActionChip
-import tv.music.player.ui.components.ArtworkPlaceholder
+import tv.music.player.ui.components.TrackArtwork
 import tv.music.player.ui.components.Keycap
 import tv.music.player.ui.components.LocalCapsuleHost
 import tv.music.player.ui.components.ScreenHeader
@@ -845,7 +845,7 @@ private fun ResultRow(
             Modifier.fillMaxSize().padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ArtworkPlaceholder(track.colorSeed, Modifier.size(48.dp), corner = 10.dp)
+            TrackArtwork(track, Modifier.size(48.dp), corner = 10.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(

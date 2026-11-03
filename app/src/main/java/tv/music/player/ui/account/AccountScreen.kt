@@ -36,6 +36,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -62,6 +63,7 @@ import tv.music.player.core.focus.rememberTvFocusGroup
 import tv.music.player.core.theme.LocalTvAccent
 import tv.music.player.core.theme.TvColors
 import tv.music.player.core.theme.TvType
+import tv.music.player.core.theme.rememberCoverArt
 import tv.music.player.ui.components.ActionChip
 import tv.music.player.ui.components.ArtworkPlaceholder
 import tv.music.player.ui.components.KeyHintBar
@@ -72,7 +74,6 @@ import tv.music.player.ui.components.TvIcon
 import tv.music.player.ui.components.TvSafeArea
 import tv.music.player.ui.navigation.LocalActiveRoute
 import tv.music.player.ui.navigation.TvRoute
-import kotlin.math.abs
 
 @Composable
 fun AccountScreen(
@@ -146,7 +147,7 @@ fun AccountScreen(
             Column(Modifier.fillMaxSize()) {
                 ScreenHeader(
                     title = "账号与歌单",
-                    subtitle = "网易云扫码 · Cookie 导入 · 我的歌单",
+                    subtitle = "网易云扫码 · 双平台 Cookie · 我的歌单",
                     group = group,
                     onBack = onBack,
                     trailing = {
@@ -220,7 +221,7 @@ fun AccountScreen(
                     )
                     ProviderCard(
                         title = "QQ 音乐",
-                        subtitle = state.qq?.nickname ?: "Cookie 导入",
+                        subtitle = state.qq?.nickname ?: "Cookie 导入 · 歌单同步",
                         seed = 67,
                         provider = "QQ",
                         group = group,
@@ -264,7 +265,7 @@ fun AccountScreen(
                 } else {
                     Spacer(Modifier.height(10.dp))
                     PlaylistSection(
-                        playlists = state.playlists.filter { it.provider == NeteaseApi.PROVIDER },
+                        playlists = state.playlists,
                         loading = state.loading,
                         error = state.error,
                         group = group,
@@ -274,7 +275,7 @@ fun AccountScreen(
                 if (state.qr is QrLoginState.Idle) {
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "Cookie 文件：{\"netease\":\"MUSIC_U=...\",\"qq\":\"qm_keyst=...\"}；QQ 歌单接口仍在校验。",
+                        "Cookie 文件：{\"netease\":\"MUSIC_U=...\",\"qq\":\"qm_keyst=...\"}；QQ 需包含 uin 与 qm_keyst。",
                         style = TvType.caption,
                         color = TvColors.TextTertiary,
                         maxLines = 1,
@@ -451,6 +452,9 @@ private fun ColumnScope.PlaylistSection(
     }
 }
 
+private fun providerLabel(provider: String): String =
+    if (provider == "qq") "QQ 音乐" else "网易云"
+
 @Composable
 private fun PlaylistRow(
     playlist: AccountPlaylist,
@@ -472,10 +476,12 @@ private fun PlaylistRow(
             Modifier.fillMaxSize().padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ArtworkPlaceholder(
-                seed = abs(playlist.id.hashCode()) % 98,
-                modifier = Modifier.size(40.dp),
-                corner = 9.dp,
+            val cover = rememberCoverArt(playlist.coverUrl)
+            Image(
+                bitmap = cover.image,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(9.dp)),
             )
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
@@ -487,7 +493,7 @@ private fun PlaylistRow(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    "${playlist.trackCount} 首 · 网易云",
+                    "${playlist.trackCount} 首 · ${providerLabel(playlist.provider)}",
                     style = TvType.caption,
                     color = TvColors.TextSecondary,
                 )
