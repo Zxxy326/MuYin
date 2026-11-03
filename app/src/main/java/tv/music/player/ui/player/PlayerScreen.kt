@@ -202,7 +202,8 @@ fun PlayerScreen(
             lyricsPanelVisible -> return@LaunchedEffect
             queueVisible -> {
                 delay(90)
-                group.focus("queue:0")
+                val key = snapshot.queue.firstOrNull()?.let { "queue:${it.id}" } ?: "queue:close"
+                group.focusWhenReady(key, timeoutMs = 1_200L)
             }
             controlsVisible -> {
                 delay(90)
@@ -2116,6 +2117,19 @@ private fun QueuePanel(
     playback: PlaybackController,
     onClose: () -> Unit,
 ) {
+    val capsule = LocalCapsuleHost.current
+    val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
+    var actionFor by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(actionFor) {
+        if (actionFor != null) group.focusWhenReady("queue:action:up", timeoutMs = 1_000L)
+    }
+    fun focusRow(trackId: Int, index: Int) {
+        scope.launch {
+            listState.animateScrollToItem(index.coerceAtLeast(0))
+            group.focusWhenReady("queue:$trackId", timeoutMs = 1_500L)
+        }
+    }
     TvSurface(
         modifier = Modifier.fillMaxHeight().width(392.dp),
         shape = RoundedCornerShape(topStart = 26.dp, bottomStart = 26.dp),
@@ -2138,13 +2152,14 @@ private fun QueuePanel(
             }
             Spacer(Modifier.height(6.dp))
             Text(
-                "OK 切歌 · 返回收起 · 当前曲目高亮",
+                "OK 切歌 · MENU 调整队列 · 返回收起",
                 style = TvType.caption,
                 color = TvColors.TextTertiary,
             )
             Spacer(Modifier.height(12.dp))
             LazyColumn(
                 modifier = Modifier.weight(1f),
+                state = listState,
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 itemsIndexed(snapshot.queue, key = { _, track -> track.id }) { index, track ->
@@ -2153,20 +2168,93 @@ private fun QueuePanel(
                         index = index,
                         isCurrent = track.id == snapshot.track.id,
                         group = group,
-                        focusKey = "queue:$index",
+                        focusKey = "queue:${track.id}",
                         onClick = {
                             playback.playFromQueue(track)
                             onClose()
+                        },
+                        onKeyEvent = { event ->
+                            if (event.type == KeyEventType.KeyDown && event.key == Key.Menu) {
+                                actionFor = index
+                                true
+                            } else {
+                                false
+                            }
                         },
                     )
                 }
             }
             Spacer(Modifier.height(8.dp))
-            Text(
-                "队列重排（上移/下移/置顶/删除）在 M1 接入",
-                style = TvType.caption,
-                color = TvColors.TextTertiary,
-            )
+            val actionIndex = actionFor
+            val actionTrack = actionIndex?.let { snapshot.queue.getOrNull(it) }
+            if (actionIndex != null && actionTrack != null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ActionChip(
+                        label = "上移",
+                        group = group,
+                        focusKey = "queue:action:up",
+                        onClick = {
+                            if (playback.moveInQueue(actionTrack, -1)) {
+                                actionFor = null
+                                focusRow(actionTrack.id, actionIndex - 1)
+                            } else {
+                                capsule.show("已经是第一首")
+                            }
+                        },
+                    )
+                    ActionChip(
+                        label = "下移",
+                        group = group,
+                        focusKey = "queue:action:down",
+                        onClick = {
+                            if (playback.moveInQueue(actionTrack, 1)) {
+                                actionFor = null
+                                focusRow(actionTrack.id, actionIndex + 1)
+                            } else {
+                                capsule.show("已经是最后一首")
+                            }
+                        },
+                    )
+                    ActionChip(
+                        label = "置顶",
+                        group = group,
+                        focusKey = "queue:action:top",
+                        onClick = {
+                            if (playback.moveToQueueTop(actionTrack)) {
+                                actionFor = null
+                                focusRow(actionTrack.id, 0)
+                            } else {
+                                capsule.show("已经在队列顶部")
+                            }
+                        },
+                    )
+                    ActionChip(
+                        label = "删除",
+                        group = group,
+                        focusKey = "queue:action:delete",
+                        onClick = {
+                            if (playback.removeFromQueue(actionTrack)) {
+                                actionFor = null
+                                val next = actionIndex.coerceAtMost(snapshot.queue.size - 2).coerceAtLeast(0)
+                                val target = snapshot.queue.filterNot { it.id == actionTrack.id }.getOrNull(next)
+                                if (target != null) {
+                                    focusRow(target.id, next)
+                                } else {
+                                    scope.launch { group.focusWhenReady("queue:close", timeoutMs = 1_000L) }
+                                }
+                            } else {
+                                capsule.show("正在播放的歌曲不能删除")
+                            }
+                        },
+                    )
+                }
+            } else {
+                Text(
+                    "在歌曲上按 MENU 可上移、下移、置顶或删除",
+                    style = TvType.caption,
+                    color = TvColors.TextTertiary,
+                )
+            }
         }
     }
 }

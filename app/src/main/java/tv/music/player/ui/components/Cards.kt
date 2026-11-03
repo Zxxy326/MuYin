@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -190,6 +191,7 @@ fun QueueRow(
     focusKey: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onKeyEvent: ((KeyEvent) -> Boolean)? = null,
 ) {
     val accent = LocalTvAccent.current
     TvSurface(
@@ -201,6 +203,7 @@ fun QueueRow(
         group = group,
         focusKey = focusKey,
         onClick = onClick,
+        onKeyEvent = onKeyEvent,
     ) {
         Row(
             Modifier

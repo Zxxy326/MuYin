@@ -300,6 +300,37 @@ class PlaybackController(
 
     fun playFromQueue(track: DemoTrack) = play(track, _state.value.queue)
 
+    fun moveInQueue(track: DemoTrack, offset: Int): Boolean {
+        val snapshot = _state.value
+        val from = snapshot.queue.indexOfFirst { it.id == track.id }
+        if (from < 0) return false
+        val to = (from + offset).coerceIn(0, snapshot.queue.lastIndex)
+        if (to == from) return false
+        val queue = snapshot.queue.toMutableList()
+        queue.add(to, queue.removeAt(from))
+        _state.value = snapshot.copy(queue = queue)
+        return true
+    }
+
+    fun moveToQueueTop(track: DemoTrack): Boolean {
+        val snapshot = _state.value
+        val from = snapshot.queue.indexOfFirst { it.id == track.id }
+        if (from <= 0) return false
+        val queue = snapshot.queue.toMutableList()
+        queue.add(0, queue.removeAt(from))
+        _state.value = snapshot.copy(queue = queue)
+        return true
+    }
+
+    fun removeFromQueue(track: DemoTrack): Boolean {
+        val snapshot = _state.value
+        if (snapshot.track.id == track.id) return false
+        val queue = snapshot.queue.filterNot { it.id == track.id }
+        if (queue.size == snapshot.queue.size) return false
+        _state.value = snapshot.copy(queue = queue)
+        return true
+    }
+
     private fun startTicker() {
         ticker?.cancel()
         ticker = scope.launch {

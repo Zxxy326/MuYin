@@ -36,7 +36,9 @@ class TvFocusGroup internal constructor(val id: String) {
         return if (first) defaultKey else (lastFocusedKey ?: defaultKey)
     }
 
-    fun requester(key: String): FocusRequester = requesters.getOrPut(key) { FocusRequester() }
+    fun register(key: String, requester: FocusRequester) {
+        requesters[key] = requester
+    }
 
     fun release(key: String, requester: FocusRequester) {
         if (requesters[key] === requester) requesters.remove(key)
@@ -93,7 +95,9 @@ fun Modifier.focusItem(
     key: String,
     recordFocus: Boolean = true,
 ): Modifier = composed {
-    val requester = remember(group, key) { group.requester(key) }
+    val requester = remember(group, key) {
+        FocusRequester().also { group.register(key, it) }
+    }
     DisposableEffect(group, key, requester) {
         onDispose { group.release(key, requester) }
     }
