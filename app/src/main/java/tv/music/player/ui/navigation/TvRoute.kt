@@ -6,6 +6,9 @@ sealed class TvRoute(val route: String) {
     data object Home : TvRoute("home")
     data object Search : TvRoute("search")
     data object Player : TvRoute("player")
+    data object ChartDetail : TvRoute("chart/{chartId}") {
+        fun of(chartId: String): String = "chart/${Uri.encode(chartId)}"
+    }
     data object Favorites : TvRoute("library/favorites")
     data object Recent : TvRoute("library/recent")
     data object LocalHub : TvRoute("library/local")

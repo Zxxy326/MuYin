@@ -111,6 +111,7 @@ fun TvMusicApp() {
                         settingsRepository = container.settings,
                         playback = container.playback,
                         onlineSearch = container.onlineSearch,
+                        charts = container.charts,
                         searchHistory = container.searchHistory,
                         companionBridge = container.companionBridge,
                         companionServer = container.companion,

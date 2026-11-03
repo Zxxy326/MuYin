@@ -16,6 +16,7 @@ import androidx.media3.exoplayer.audio.AudioOffloadSupport
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import tv.music.player.core.settings.AppSettings
 import tv.music.player.core.smb.PreferredDataSourceFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,6 +56,7 @@ class PlaybackController(
     private val localPath: (DemoTrack) -> String? = { null },
     private val onTrackStarted: (DemoTrack) -> Unit = {},
     smbFactory: DataSource.Factory? = null,
+    private val settingsProvider: () -> AppSettings = { AppSettings() },
 ) {
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -93,13 +95,7 @@ class PlaybackController(
         .build()
 
     init {
-        player.setAudioAttributes(
-            AudioAttributes.Builder()
-                .setUsage(C.USAGE_MEDIA)
-                .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                .build(),
-            true,
-        )
+        applyAudioBehavior()
         player.setHandleAudioBecomingNoisy(true)
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -149,9 +145,10 @@ class PlaybackController(
             if (player.playbackState == Player.STATE_IDLE || player.mediaItemCount == 0) {
                 play(snapshot.track, snapshot.queue)
             } else if (player.isPlaying) {
-                player.pause()
+                pauseWithFade()
             } else {
                 player.play()
+                fadeIn()
             }
             return
         }
@@ -216,12 +213,15 @@ class PlaybackController(
     }
 
     private fun startMedia(track: DemoTrack, url: String) {
+        applyAudioBehavior()
         player.setMediaItem(buildMediaItem(track, url))
         player.prepare()
         player.playWhenReady = true
+        fadeIn()
         _state.value = _state.value.copy(buffering = false)
         startPlayerTicker()
         onTrackStarted(track)
+        prefetchNext(track)
     }
 
     private fun startLocalFile(track: DemoTrack, file: File) {
@@ -229,14 +229,87 @@ class PlaybackController(
     }
 
     private fun startLocalUri(track: DemoTrack, uri: String) {
+        applyAudioBehavior()
         player.stop()
         player.clearMediaItems()
         player.setMediaItem(buildMediaItem(track, uri))
         player.prepare()
         player.playWhenReady = true
+        fadeIn()
         _state.value = _state.value.copy(buffering = false, isPlaying = true)
         startPlayerTicker()
         onTrackStarted(track)
+        prefetchNext(track)
+    }
+
+    private fun applyAudioBehavior() {
+        player.setAudioAttributes(
+            AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                .build(),
+            settingsProvider().audioFocus,
+        )
+    }
+
+    private var fadeJob: Job? = null
+
+    private fun fadeIn() {
+        fadeJob?.cancel()
+        if (!settingsProvider().fadeInOut) {
+            player.volume = 1f
+            return
+        }
+        fadeJob = scope.launch {
+            player.volume = 0f
+            val steps = 10
+            repeat(steps) { index ->
+                delay(30L)
+                player.volume = (index + 1) / steps.toFloat()
+            }
+            player.volume = 1f
+        }
+    }
+
+    private fun pauseWithFade() {
+        fadeJob?.cancel()
+        if (!settingsProvider().fadeInOut) {
+            player.volume = 1f
+            player.pause()
+            return
+        }
+        fadeJob = scope.launch {
+            val from = player.volume.coerceAtLeast(0.05f)
+            val steps = 8
+            for (index in 1..steps) {
+                player.volume = from * (1f - index / steps.toFloat())
+                delay(25L)
+            }
+            player.pause()
+            player.volume = 1f
+        }
+    }
+
+    private var prefetchJob: Job? = null
+
+    private fun prefetchNext(track: DemoTrack) {
+        if (!settingsProvider().gaplessPlayback) return
+        val snapshot = _state.value
+        if (snapshot.queue.size < 2) return
+        val index = snapshot.queue.indexOfFirst {
+            if (it.isOnline && track.isOnline) {
+                it.onlineSource == track.onlineSource && it.onlineSongId == track.onlineSongId
+            } else {
+                it.id == track.id
+            }
+        }
+        if (index < 0) return
+        val next = snapshot.queue[(index + 1) % snapshot.queue.size]
+        if (!next.isOnline) return
+        prefetchJob?.cancel()
+        prefetchJob = scope.launch(Dispatchers.IO) {
+            runCatching { resolveUrl(next, null) }
+        }
     }
 
     private fun buildMediaItem(track: DemoTrack, uri: String): MediaItem =

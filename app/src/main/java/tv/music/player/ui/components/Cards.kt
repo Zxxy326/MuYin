@@ -138,6 +138,7 @@ fun WideCard(
 @Composable
 fun ChartCard(
     name: String,
+    subtitle: String,
     index: Int,
     group: TvFocusGroup,
     focusKey: String,
@@ -176,7 +177,7 @@ fun ChartCard(
                 )
                 Column {
                     Text(name, style = TvType.title, color = TvColors.TextPrimary, maxLines = 1)
-                    Text("实时更新 · 演示数据", style = TvType.caption, color = TvColors.TextSecondary)
+                    Text(subtitle, style = TvType.caption, color = TvColors.TextSecondary, maxLines = 1)
                 }
             }
         }

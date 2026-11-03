@@ -499,10 +499,10 @@ class SourceMarketStore(
         const val REPO_NAME = "lxmusic-"
         const val RELEASE_LIMIT = 30
         const val KEY_RELEASES = "release_cache_v2"
-        const val MAX_ENTRY_BYTES = 4L * 1024L * 1024L
-        const val MAX_TOTAL_BYTES = 24L * 1024L * 1024L
-        const val MAX_ZIP_BYTES = 24L * 1024L * 1024L
-        const val MAX_ENTRIES = 120
+        const val MAX_ENTRY_BYTES = 8L * 1024L * 1024L
+        const val MAX_TOTAL_BYTES = 64L * 1024L * 1024L
+        const val MAX_ZIP_BYTES = 64L * 1024L * 1024L
+        const val MAX_ENTRIES = 200
         val UA = "TVMusic-Market/2.0 (Android ${android.os.Build.VERSION.RELEASE})"
         val MIRROR_PREFIXES = listOf(
             "https://ghproxy.net/",

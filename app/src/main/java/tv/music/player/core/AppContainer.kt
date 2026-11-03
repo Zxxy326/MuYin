@@ -16,6 +16,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import kotlinx.coroutines.launch
 import tv.music.player.core.account.AccountStore
+import tv.music.player.core.charts.ChartRepository
 import tv.music.player.core.companion.CompanionBridge
 import tv.music.player.core.companion.CompanionServer
 import tv.music.player.core.download.DownloadStore
@@ -46,10 +47,13 @@ class AppContainer(context: Context) {
 
     val appContext: Context = context.applicationContext
     val settings = SettingsRepository(appContext)
+    @Volatile
+    private var latestSettings = tv.music.player.core.settings.AppSettings()
 
     val lxFileStore = LxFileStore(appContext)
     val lxEngine = LxJsEngine(lxFileStore)
     val onlineSearch = OnlineSearchApi()
+    val charts = ChartRepository()
     val searchHistory = SearchHistoryStore(appContext)
     val lyrics = LyricsRepository(
         context = appContext,
@@ -74,6 +78,7 @@ class AppContainer(context: Context) {
         localPath = downloads::pathFor,
         onTrackStarted = library::recordPlayed,
         smbFactory = smbFactory,
+        settingsProvider = { latestSettings },
     )
     val account = AccountStore(appContext)
     val companionBridge = CompanionBridge()
@@ -104,6 +109,7 @@ class AppContainer(context: Context) {
         }
         appScope.launch {
             settings.settings.collectLatest { current ->
+                latestSettings = current
                 if (current.companionEnabled) companion.start() else companion.stop()
             }
         }
@@ -113,10 +119,17 @@ class AppContainer(context: Context) {
         }
     }
 
+    private val streamUrlCache = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long>>()
+
     private suspend fun resolveStreamUrl(track: DemoTrack, preferredQuality: String?): String? {
         if (!track.isOnline) return null
         if (!lxEngine.ready()) return null
         val quality = settings.settings.first().quality.lxQuality
+        val cacheKey = "${track.onlineSource}:${track.onlineSongId}:$quality"
+        val now = android.os.SystemClock.elapsedRealtime()
+        streamUrlCache[cacheKey]?.let { (url, at) ->
+            if (now - at < 4 * 60_000L) return url
+        }
         val info = mapOf(
             "id" to track.onlineSongId,
             "songmid" to track.onlineSongId,
@@ -145,7 +158,12 @@ class AppContainer(context: Context) {
         }
         for (candidate in candidates.distinct()) {
             val url = lxEngine.getPlayUrl(track.onlineSource, info, candidate)
-            if (!url.isNullOrBlank() && isPlayable(url)) return url
+            if (!url.isNullOrBlank() && isPlayable(url)) {
+                val stamp = android.os.SystemClock.elapsedRealtime()
+                streamUrlCache.entries.removeAll { stamp - it.value.second > 5 * 60_000L }
+                streamUrlCache[cacheKey] = url to stamp
+                return url
+            }
         }
         return null
     }

@@ -55,10 +55,12 @@ import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import tv.music.player.core.charts.Charts
 import tv.music.player.core.focus.TvFocusGroup
 import tv.music.player.core.focus.TvSurface
 import tv.music.player.core.focus.rememberTvFocusGroup
 import tv.music.player.core.library.LibraryStore
+import tv.music.player.core.library.libraryKey
 import tv.music.player.core.playback.DemoCatalog
 import tv.music.player.core.playback.PlaybackController
 import tv.music.player.core.playback.DemoTrack
@@ -92,10 +94,13 @@ fun HomeScreen(
     val listState = rememberLazyListState()
     val capsule = LocalCapsuleHost.current
     val recent by library.recent.collectAsStateWithLifecycle()
+    val favorites by library.favorites.collectAsStateWithLifecycle()
     val continueTracks = remember(recent) {
         recent.take(6).ifEmpty { DemoCatalog.tracks.take(6) }
     }
-    val guessTracks = remember { DemoCatalog.tracks.drop(4).take(8) }
+    val guessTracks = remember(recent, favorites) { buildGuessTracks(recent, favorites) }
+    val guessTrailing = if (recent.isEmpty()) "播放后自动推荐" else "根据最近播放 · 本地算法"
+    val charts = Charts.all
     val greeting = rememberGreeting()
     val clock = rememberClock()
     val online = rememberNetworkOnline()
@@ -116,7 +121,7 @@ fun HomeScreen(
     fun railSize(id: String): Int = when (id) {
         "continue" -> continueTracks.size
         "guess" -> guessTracks.size
-        else -> DemoCatalog.charts.size
+        else -> charts.size
     }
 
     fun railSection(id: String): Int = railOrder.indexOf(id).coerceAtLeast(0)
@@ -295,7 +300,7 @@ fun HomeScreen(
                 }
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        SectionHeader("猜你喜欢", trailing = "本地算法 · 无账号也可用")
+                        SectionHeader("猜你喜欢", trailing = guessTrailing)
                         TvRail(
                             items = guessTracks,
                             keyPrefix = "rail:guess",
@@ -314,20 +319,23 @@ fun HomeScreen(
                 }
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        SectionHeader("热门榜单", trailing = "演示数据 · 每小时更新")
+                        SectionHeader("热门榜单", trailing = "QQ 音乐 / 网易云 · 每日更新")
                         TvRail(
-                            items = DemoCatalog.charts,
+                            items = charts,
                             keyPrefix = "rail:charts",
                             group = group,
                             initialIndex = railIndex("rail:charts"),
                             state = chartsState,
-                        ) { index, name, focusKey ->
+                        ) { index, chart, focusKey ->
                             ChartCard(
-                                name = name,
+                                name = chart.name,
+                                subtitle = chart.subtitle,
                                 index = index,
                                 group = group,
                                 focusKey = focusKey,
-                                onClick = { capsule.show("榜单详情将在 M3 接入") },
+                                onClick = {
+                                    navController.navigate(TvRoute.ChartDetail.of(chart.id))
+                                },
                             )
                         }
                     }
@@ -560,6 +568,21 @@ private fun rememberNetworkOnline(): Boolean {
         onDispose { runCatching { manager?.unregisterNetworkCallback(callback) } }
     }
     return online
+}
+
+private fun buildGuessTracks(
+    recent: List<DemoTrack>,
+    favorites: List<DemoTrack>,
+): List<DemoTrack> {
+    if (recent.isEmpty() && favorites.isEmpty()) {
+        return DemoCatalog.tracks.drop(4).take(8)
+    }
+    val recentKeys = recent.map { it.libraryKey() }.toSet()
+    val artistHits = recent.map { it.artist }.filter { it.isNotBlank() }.distinct().take(6).toSet()
+    val pool = (favorites + recent + DemoCatalog.tracks).distinctBy { it.libraryKey() }
+    val matched = pool.filter { it.artist in artistHits && it.libraryKey() !in recentKeys }
+    val fill = DemoCatalog.tracks.filter { it.libraryKey() !in recentKeys }
+    return (matched + fill).distinctBy { it.libraryKey() }.take(8)
 }
 
 private fun hasInternet(context: Context): Boolean {

@@ -11,6 +11,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import tv.music.player.core.charts.ChartRepository
+import tv.music.player.core.charts.Charts
 import tv.music.player.core.companion.CompanionBridge
 import tv.music.player.core.companion.CompanionServer
 import tv.music.player.core.account.AccountStore
@@ -31,6 +33,7 @@ import tv.music.player.core.settings.SettingsRepository
 import tv.music.player.core.update.UpdateStore
 import tv.music.player.ui.account.AccountPlaylistScreen
 import tv.music.player.ui.account.AccountScreen
+import tv.music.player.ui.charts.ChartDetailScreen
 import tv.music.player.ui.home.HomeScreen
 import tv.music.player.ui.library.DownloadsScreen
 import tv.music.player.ui.local.DeviceMusicScreen
@@ -51,6 +54,7 @@ fun TvNavHost(
     settingsRepository: SettingsRepository,
     playback: PlaybackController,
     onlineSearch: OnlineSearchApi,
+    charts: ChartRepository,
     searchHistory: SearchHistoryStore,
     companionBridge: CompanionBridge,
     companionServer: CompanionServer,
@@ -89,6 +93,22 @@ fun TvNavHost(
                 companionBridge = companionBridge,
                 navController = navController,
             )
+        }
+        composable(
+            route = TvRoute.ChartDetail.route,
+            arguments = listOf(navArgument("chartId") { type = NavType.StringType }),
+        ) { entry ->
+            val chart = Charts.byId(entry.arguments?.getString("chartId").orEmpty())
+            if (chart == null) {
+                androidx.compose.runtime.LaunchedEffect(Unit) { navController.popBackStack() }
+            } else {
+                ChartDetailScreen(
+                    chart = chart,
+                    repository = charts,
+                    playback = playback,
+                    navController = navController,
+                )
+            }
         }
         composable(TvRoute.Player.route) {
             PlayerScreen(

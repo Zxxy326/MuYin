@@ -35,7 +35,7 @@ object SettingsGroups {
             id = "playback",
             title = "播放",
             subtitle = "音质 · 无缝 · 音频焦点",
-            description = "音质与取流链路已接入；MediaSessionService 提供后台播放、通知栏与媒体键控制。无缝、淡入淡出等细项后续补充。",
+            description = "音质、淡入淡出、音频焦点与下一首预解析已接入；MediaSessionService 提供后台播放、通知栏与媒体键控制。",
             icon = Icons.Rounded.PlayCircle,
             highlights = listOf("音质", "后台播放", "通知栏", "媒体键"),
         ),

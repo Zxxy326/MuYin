@@ -438,7 +438,7 @@ private fun buildEntries(
             SettingEntry.Toggle(
                 key = "gapless",
                 title = "无缝播放",
-                subtitle = "队列内歌曲之间不插入静音",
+                subtitle = "提前解析下一首，缩短在线歌曲的切歌等待",
                 checked = settings.gaplessPlayback,
                 onToggle = {
                     save(if (settings.gaplessPlayback) "已关闭无缝播放" else "已开启无缝播放") {
