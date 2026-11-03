@@ -43,7 +43,6 @@ import tv.music.player.core.scale.LocalTvScale
 import tv.music.player.core.search.OnlineSearchApi
 import tv.music.player.core.settings.AppSettings
 import tv.music.player.core.settings.LyricStyle
-import tv.music.player.core.settings.PlayerLayout
 import tv.music.player.core.settings.SettingsRepository
 import tv.music.player.core.settings.formatLyricOffset
 import tv.music.player.core.settings.lxQuality
@@ -383,7 +382,7 @@ private fun buildEntries(
             SettingEntry.Choice(
                 key = "lyricStyle",
                 title = "歌词样式",
-                subtitle = "8 种样式：经典 / 字幕 / 极简 / 扫色 / 气泡 / 双语 / 黑胶 / 沉浸",
+                subtitle = "3 种横屏动效：动感涟漪 / 简约 / 精简时钟",
                 value = settings.lyricStyle.label,
                 onNext = {
                     val next = settings.lyricStyle.next()
@@ -417,34 +416,6 @@ private fun buildEntries(
                 onPrevious = {
                     val previous = (settings.lyricOffsetMs - 500).coerceIn(-5_000, 5_000)
                     save("歌词偏移：${formatLyricOffset(previous)}") { repository.setLyricOffset(previous) }
-                },
-            ),
-            SettingEntry.Choice(
-                key = "lyricSize",
-                title = "歌词字号",
-                subtitle = "当前行字号 5 档中的 3 档预览",
-                value = settings.lyricSize.label,
-                onNext = {
-                    val next = settings.lyricSize.next()
-                    save("歌词字号：${next.label}") { repository.setLyricSize(next) }
-                },
-                onPrevious = {
-                    val previous = settings.lyricSize.previous()
-                    save("歌词字号：${previous.label}") { repository.setLyricSize(previous) }
-                },
-            ),
-            SettingEntry.Choice(
-                key = "playerLayout",
-                title = "播放页布局",
-                subtitle = "全屏歌词 / 左封面右歌词；黑胶、沉浸与极简样式强制全屏",
-                value = settings.playerLayout.label,
-                onNext = {
-                    val next = if (settings.playerLayout == PlayerLayout.CENTERED) PlayerLayout.SPLIT else PlayerLayout.CENTERED
-                    save("播放布局：${next.label}") { repository.setPlayerLayout(next) }
-                },
-                onPrevious = {
-                    val previous = if (settings.playerLayout == PlayerLayout.CENTERED) PlayerLayout.SPLIT else PlayerLayout.CENTERED
-                    save("播放布局：${previous.label}") { repository.setPlayerLayout(previous) }
                 },
             ),
         )

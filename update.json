@@ -1,8 +1,8 @@
 {
-  "versionCode": 13,
-  "versionName": "0.10.2",
-  "apkUrl": "https://gh-proxy.com/https://github.com/Zxxy326/TV-Music/releases/download/v0.10.2-m3b2/TV-Music-0.10.2-public.apk",
-  "sha256": "36947398fa9391f7f0cf7cb87a1d103797adbf530a60cbae4ad47b3abc95de63",
-  "sizeBytes": 64381880,
-  "notes": "0.10.2：更新下载支持 gh-proxy / ghproxy / GitHub 多通道自动切换；启动后自动后台检查更新，有新版本会发通知并在首页提示。"
+  "versionCode": 14,
+  "versionName": "0.11.0",
+  "apkUrl": "https://gh-proxy.com/https://github.com/Zxxy326/TV-Music/releases/download/v0.11.0-m3b2/TV-Music-0.11.0-public.apk",
+  "sha256": "f17db0a83da229969fec495736e8fff18734085b5620ecc613dd3ac7d0bcedf4",
+  "sizeBytes": 64431032,
+  "notes": "0.11.0：只保留动感涟漪、简约、精简时钟三种横屏歌词动效；歌曲封面动态取色与模糊背景，播放页 5 秒自动沉浸，动效全屏铺满。"
 }

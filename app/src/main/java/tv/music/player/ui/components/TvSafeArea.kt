@@ -11,12 +11,18 @@ import tv.music.player.core.theme.TvDimens
 @Composable
 fun TvSafeArea(
     modifier: Modifier = Modifier,
+    fullBleed: Boolean = false,
     content: @Composable BoxScope.() -> Unit,
 ) {
     Box(
-        modifier
-            .fillMaxSize()
-            .padding(horizontal = TvDimens.SafeHorizontal, vertical = TvDimens.SafeVertical),
+        (if (fullBleed) {
+            modifier.fillMaxSize()
+        } else {
+            modifier.fillMaxSize().padding(
+                horizontal = TvDimens.SafeHorizontal,
+                vertical = TvDimens.SafeVertical,
+            )
+        }),
         content = content,
     )
 }

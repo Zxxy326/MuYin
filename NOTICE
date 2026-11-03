@@ -21,6 +21,10 @@ XiangsuPlayerHQ (https://github.com/r3n011/XiangsuPlayerHQ)
 core/lx 下的 LX QuickJS 引擎、HTTP 客户端与脚本存储移植自该项目，
 并按 GPL-3.0 保留本声明。
 
+Daily Music (https://github.com/Zxxy326/daily-music)
+横屏歌词动效（动感涟漪 / 简约 / 精简时钟）参考其 Compose 绘制实现，
+按 GPL-3.0 保留本声明。
+
 第三方组件
 ----------
 本项目的 APK 以二进制依赖形式包含以下组件：

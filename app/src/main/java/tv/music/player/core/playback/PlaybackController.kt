@@ -10,7 +10,11 @@ import androidx.media3.common.Player
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.audio.AudioOffloadSupport
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import tv.music.player.core.smb.PreferredDataSourceFactory
 import kotlinx.coroutines.CoroutineScope
@@ -73,7 +77,20 @@ class PlaybackController(
         DefaultDataSource.Factory(appContext, httpDataSourceFactory)
     }
     private val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
-    val player: ExoPlayer = ExoPlayer.Builder(appContext, mediaSourceFactory).build()
+    private val renderersFactory = object : DefaultRenderersFactory(appContext) {
+        override fun buildAudioSink(
+            context: Context,
+            enableFloatOutput: Boolean,
+            enableAudioTrackPlaybackParams: Boolean,
+        ): AudioSink = DefaultAudioSink.Builder(context)
+            .setAudioProcessors(arrayOf(SpectrumProcessor()))
+            .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+            .setAudioOffloadSupportProvider { _, _ -> AudioOffloadSupport.DEFAULT_UNSUPPORTED }
+            .build()
+    }
+    val player: ExoPlayer = ExoPlayer.Builder(appContext, mediaSourceFactory)
+        .setRenderersFactory(renderersFactory)
+        .build()
 
     init {
         player.setAudioAttributes(

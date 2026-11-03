@@ -52,7 +52,8 @@ fun TvMusicApp() {
     val context = LocalContext.current
     val container = (context.applicationContext as TvMusicApplication).container
     val settings by container.settings.settings.collectAsStateWithLifecycle(initialValue = AppSettings())
-    val coverArt = rememberCoverArt()
+    val playbackState by container.playback.state.collectAsStateWithLifecycle()
+    val coverArt = rememberCoverArt(playbackState.track.coverUrl)
     val accent by animateColorAsState(
         targetValue = accentFor(settings.accentMode, coverArt.accent),
         animationSpec = tween(if (settings.animationsEnabled) 420 else 0),
