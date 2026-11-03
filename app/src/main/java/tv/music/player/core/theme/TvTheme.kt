@@ -72,7 +72,7 @@ fun TvTheme(
             scrim = TvColors.Scrim,
         )
     }
-    MaterialTheme(colorScheme = scheme) {
+    MaterialTheme(colorScheme = scheme, typography = TvFonts.typography) {
         CompositionLocalProvider(
             LocalTvAccent provides accent,
             LocalAnimationsEnabled provides animationsEnabled,

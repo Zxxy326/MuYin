@@ -235,6 +235,11 @@ fun QueueRow(
             }
             val sourceLabel = when {
                 track.isLocal -> "本地"
+                track.onlineSource == "tx" -> "QQ"
+                track.onlineSource == "wy" -> "网易"
+                track.onlineSource == "kg" -> "酷狗"
+                track.onlineSource == "kw" -> "酷我"
+                track.onlineSource == "mg" -> "咪咕"
                 track.onlineSource.isNotBlank() -> track.onlineSource.uppercase()
                 else -> ""
             }

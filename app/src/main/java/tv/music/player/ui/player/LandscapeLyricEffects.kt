@@ -57,7 +57,6 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -70,6 +69,7 @@ import tv.music.player.core.lyrics.Lyrics
 import tv.music.player.core.playback.DemoTrack
 import tv.music.player.core.playback.SpectrumTap
 import tv.music.player.core.theme.CoverArt
+import tv.music.player.core.theme.TvFonts
 import kotlin.math.abs
 import kotlin.math.exp
 
@@ -305,7 +305,7 @@ private fun BoxScope.WaveWatermark(
             fontSize = with(density) { sizePx.toSp() },
             fontWeight = FontWeight.Black,
             color = palette.watermark,
-            fontFamily = FontFamily.SansSerif,
+            fontFamily = TvFonts.family,
         ),
         modifier = Modifier.align(Alignment.Center).blur(14.dp),
     )
@@ -349,7 +349,7 @@ private fun BoxScope.WaveLyricText(
             BasicText(
                 text = token,
                 style = TextStyle(
-                    fontFamily = FontFamily.SansSerif,
+                    fontFamily = TvFonts.family,
                     fontSize = fontSize,
                     lineHeight = fontSize * 1.28f,
                     fontWeight = FontWeight.Black,
@@ -470,7 +470,7 @@ internal fun SimpleLyricsEffect(
             OutlinedText(
                 text = track.title,
                 style = TextStyle(
-                    fontFamily = FontFamily.SansSerif,
+                    fontFamily = TvFonts.family,
                     fontSize = with(density) { (h * 0.155f).toSp() },
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
@@ -484,7 +484,7 @@ internal fun SimpleLyricsEffect(
             Text(
                 text = track.artist.uppercase(),
                 style = TextStyle(
-                    fontFamily = FontFamily.SansSerif,
+                    fontFamily = TvFonts.family,
                     fontSize = with(density) { (h * 0.019f).toSp() },
                     letterSpacing = 2.sp,
                     color = Color.White.copy(alpha = 0.60f),
@@ -536,7 +536,7 @@ private fun SimpleLyricLine(
             OutlinedText(
                 text = token,
                 style = TextStyle(
-                    fontFamily = FontFamily.SansSerif,
+                    fontFamily = TvFonts.family,
                     fontSize = fontSize,
                     lineHeight = fontSize * 1.26f,
                     fontWeight = FontWeight.Bold,
@@ -623,7 +623,7 @@ internal fun ClockLyricsEffect(track: DemoTrack, coverImage: CoverArt) {
         BasicText(
             text = clock,
             style = TextStyle(
-                fontFamily = FontFamily.SansSerif,
+                fontFamily = TvFonts.family,
                 fontSize = with(LocalDensity.current) { (h * 0.26f).toSp() },
                 fontWeight = FontWeight.Bold,
                 color = Color.White,

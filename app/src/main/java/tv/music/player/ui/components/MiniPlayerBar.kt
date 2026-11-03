@@ -63,6 +63,7 @@ import tv.music.player.core.lyrics.LyricsState
 import tv.music.player.core.playback.PlaybackController
 import tv.music.player.core.theme.LocalTvAccent
 import tv.music.player.core.theme.TvColors
+import tv.music.player.core.theme.TvFonts
 import tv.music.player.core.theme.TvType
 
 /**
@@ -137,6 +138,7 @@ fun MiniPlayerBar(
                 baseColor = Color.Transparent,
                 focusedScale = 1.0f,
                 glowSize = 0.dp,
+                showBorder = false,
                 group = group,
                 focusKey = "mini:title",
                 onClick = onOpenPlayer,
@@ -186,6 +188,7 @@ fun MiniPlayerBar(
                         BasicText(
                             text = text,
                             style = TextStyle(
+                                fontFamily = TvFonts.family,
                                 fontSize = 17.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 brush = if (plot != null) {
@@ -206,7 +209,7 @@ fun MiniPlayerBar(
                 }
             }
             Spacer(Modifier.width(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 MiniControl(
                     icon = Icons.Rounded.SkipPrevious,
                     contentDescription = "上一首",

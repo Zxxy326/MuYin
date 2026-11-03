@@ -20,12 +20,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import tv.music.player.core.theme.LocalAnimationsEnabled
@@ -46,6 +52,7 @@ fun TvSurface(
     glowSize: Dp = 16.dp,
     focusedBorderColor: Color? = null,
     focusedGlowColor: Color? = null,
+    showBorder: Boolean = true,
     enabled: Boolean = true,
     group: TvFocusGroup? = null,
     focusKey: String? = null,
@@ -77,6 +84,7 @@ fun TvSurface(
     )
     val ringColor = focusedBorderColor ?: accent
     val glowColor = focusedGlowColor ?: accent
+    val glowPx = with(LocalDensity.current) { glow.toPx() }
     val borderColor by animateColorAsState(
         targetValue = if (focused) ringColor else TvColors.Divider,
         animationSpec = tween(if (animations) 160 else 0),
@@ -114,16 +122,41 @@ fun TvSurface(
                 scaleX = scale
                 scaleY = scale
             }
-            .shadow(
-                elevation = glow,
-                shape = shape,
-                clip = false,
-                ambientColor = glowColor,
-                spotColor = glowColor,
-            )
+            .drawBehind {
+                if (glowPx <= 0f) return@drawBehind
+                val outline = shape.createOutline(size, layoutDirection, this)
+                val steps = 6
+                val stroke = glowPx / 5f
+                for (i in 1..steps) {
+                    val progress = (i - 0.5f) / steps
+                    val color = glowColor.copy(alpha = 0.11f * (1f - progress) + 0.012f)
+                    val distance = stroke * (i - 0.5f)
+                    val topLeft = Offset(-distance, -distance)
+                    val glowSize = Size(size.width + distance * 2, size.height + distance * 2)
+                    when (outline) {
+                        is Outline.Rounded -> drawRoundRect(
+                            color = color,
+                            topLeft = topLeft,
+                            size = glowSize,
+                            cornerRadius = CornerRadius(
+                                outline.roundRect.topLeftCornerRadius.x + distance,
+                                outline.roundRect.topLeftCornerRadius.y + distance,
+                            ),
+                            style = Stroke(stroke),
+                        )
+                        is Outline.Rectangle -> drawRect(
+                            color = color,
+                            topLeft = topLeft,
+                            size = glowSize,
+                            style = Stroke(stroke),
+                        )
+                        is Outline.Generic -> Unit
+                    }
+                }
+            }
             .clip(shape)
             .background(baseColor)
-            .border(borderWidth, borderColor, shape)
+            .then(if (showBorder) Modifier.border(borderWidth, borderColor, shape) else Modifier)
             .then(focusModifier)
             .then(keyModifier)
             .then(interactionModifier),

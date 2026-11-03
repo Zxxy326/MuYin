@@ -138,6 +138,7 @@ import tv.music.player.core.settings.SettingsRepository
 import tv.music.player.core.settings.formatLyricOffset
 import tv.music.player.core.theme.LocalTvAccent
 import tv.music.player.core.theme.TvColors
+import tv.music.player.core.theme.TvFonts
 import tv.music.player.core.theme.TvType
 import tv.music.player.core.theme.rememberCoverArt
 import tv.music.player.ui.components.ActionChip
@@ -863,14 +864,14 @@ private fun LyricsMessage(
     ) {
         Text(
             text = title,
-            style = TextStyle(fontSize = (34f * scale).sp, fontWeight = FontWeight.Bold),
+            style = TextStyle(fontFamily = TvFonts.family, fontSize = (34f * scale).sp, fontWeight = FontWeight.Bold),
             color = if (accent) LocalTvAccent.current else Color.White,
         )
         if (!subtitle.isNullOrBlank()) {
             Spacer(Modifier.height(10.dp))
             Text(
                 text = subtitle,
-                style = TextStyle(fontSize = (20f * scale).sp),
+                style = TextStyle(fontFamily = TvFonts.family, fontSize = (20f * scale).sp),
                 color = Color.White.copy(alpha = 0.45f),
             )
         }
@@ -982,7 +983,7 @@ private fun LyricRow(
     ) {
         Text(
             text = line.text,
-            style = TextStyle(
+            style = TextStyle(fontFamily = TvFonts.family, 
                 fontSize = fontSize.sp,
                 lineHeight = (fontSize * 1.3f).sp,
                 fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
@@ -995,7 +996,7 @@ private fun LyricRow(
         if (showTranslation && !translation.isNullOrBlank()) {
             Text(
                 text = translation,
-                style = TextStyle(
+                style = TextStyle(fontFamily = TvFonts.family, 
                     fontSize = (fontSize * 0.52f).sp,
                     lineHeight = (fontSize * 0.7f).sp,
                     fontWeight = FontWeight.Medium,
@@ -1041,7 +1042,7 @@ private fun SubtitleLyrics(
                     Spacer(Modifier.height(12.dp))
                     Text(
                         text = next.text,
-                        style = TextStyle(
+                        style = TextStyle(fontFamily = TvFonts.family, 
                             fontSize = (28f * scale).sp,
                             lineHeight = (34f * scale).sp,
                             fontWeight = FontWeight.Medium,
@@ -1059,7 +1060,7 @@ private fun SubtitleLyrics(
 
 @Composable
 private fun OutlinedLyric(text: String, fontSize: androidx.compose.ui.unit.TextUnit, alpha: Float = 1f) {
-    val base = TextStyle(
+    val base = TextStyle(fontFamily = TvFonts.family, 
         fontSize = fontSize,
         lineHeight = (fontSize.value * 1.16f).sp,
         fontWeight = FontWeight.Bold,
@@ -1175,7 +1176,7 @@ private fun KaraokeLine(
     val accent = LocalTvAccent.current
     val measurer = rememberTextMeasurer()
     val fontSize = (42f * scale).sp
-    val style = TextStyle(
+    val style = TextStyle(fontFamily = TvFonts.family, 
         fontSize = fontSize,
         lineHeight = (fontSize.value * 1.28f).sp,
         fontWeight = FontWeight.Bold,
@@ -1203,7 +1204,7 @@ private fun KaraokeLine(
         Spacer(Modifier.height(if (bilingual) 8.dp else 4.dp))
         Text(
             text = line.translation,
-            style = TextStyle(
+            style = TextStyle(fontFamily = TvFonts.family, 
                 fontSize = ((if (bilingual) 25f else 22f) * scale).sp,
                 lineHeight = ((if (bilingual) 32f else 28f) * scale).sp,
                 fontWeight = FontWeight.Medium,
@@ -1275,7 +1276,7 @@ private fun PlainLyricLine(
     val fontSize = ((if (active) 40f else 24f) * scale).sp
     Text(
         text = line.text,
-        style = TextStyle(
+        style = TextStyle(fontFamily = TvFonts.family, 
             fontSize = fontSize,
             lineHeight = (fontSize.value * 1.3f).sp,
             fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
@@ -1287,7 +1288,7 @@ private fun PlainLyricLine(
     if (showTranslation && !line.translation.isNullOrBlank()) {
         Text(
             text = line.translation,
-            style = TextStyle(
+            style = TextStyle(fontFamily = TvFonts.family, 
                 fontSize = (18f * scale).sp,
                 lineHeight = (24f * scale).sp,
                 fontWeight = FontWeight.Normal,
@@ -1375,7 +1376,7 @@ private fun BounceLine(
             ) {
                 Text(
                     text = word.text,
-                    style = TextStyle(
+                    style = TextStyle(fontFamily = TvFonts.family, 
                         fontSize = (36f * scale).sp,
                         lineHeight = (42f * scale).sp,
                         fontWeight = FontWeight.Bold,
@@ -1392,7 +1393,7 @@ private fun BounceLine(
     if (showTranslation && !line.translation.isNullOrBlank()) {
         Text(
             text = line.translation,
-            style = TextStyle(
+            style = TextStyle(fontFamily = TvFonts.family, 
                 fontSize = (21f * scale).sp,
                 lineHeight = (27f * scale).sp,
                 fontWeight = FontWeight.Medium,
@@ -1505,7 +1506,7 @@ private fun StylePreview(style: LyricStyle) {
 private fun PreviewText(text: String, size: Float, color: Color, bold: Boolean = false) {
     Text(
         text = text,
-        style = TextStyle(fontSize = size.sp, lineHeight = (size * 1.15f).sp),
+        style = TextStyle(fontFamily = TvFonts.family, fontSize = size.sp, lineHeight = (size * 1.15f).sp),
         color = color,
         fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
         maxLines = 1,
@@ -1626,7 +1627,7 @@ private fun VinylLyricLine(
     val fontSize = ((if (active) 40f else 23f) * scale).sp
     Text(
         text = line.text,
-        style = TextStyle(
+        style = TextStyle(fontFamily = TvFonts.family, 
             fontSize = fontSize,
             lineHeight = (fontSize.value * 1.28f).sp,
             fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
@@ -1638,7 +1639,7 @@ private fun VinylLyricLine(
     if (active && showTranslation && !line.translation.isNullOrBlank()) {
         Text(
             text = line.translation,
-            style = TextStyle(
+            style = TextStyle(fontFamily = TvFonts.family, 
                 fontSize = (21f * scale).sp,
                 lineHeight = (27f * scale).sp,
                 fontWeight = FontWeight.Medium,
@@ -1689,7 +1690,7 @@ private fun ImmersiveLyrics(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = line.text,
-                        style = TextStyle(
+                        style = TextStyle(fontFamily = TvFonts.family, 
                             fontSize = (52f * scale).sp,
                             lineHeight = (62f * scale).sp,
                             fontWeight = FontWeight.Bold,
@@ -1707,7 +1708,7 @@ private fun ImmersiveLyrics(
                         Spacer(Modifier.height(8.dp))
                         Text(
                             text = line.translation,
-                            style = TextStyle(
+                            style = TextStyle(fontFamily = TvFonts.family, 
                                 fontSize = (24f * scale).sp,
                                 lineHeight = (31f * scale).sp,
                                 fontWeight = FontWeight.Medium,
@@ -1721,7 +1722,7 @@ private fun ImmersiveLyrics(
             } else {
                 Text(
                     text = line.text,
-                    style = TextStyle(
+                    style = TextStyle(fontFamily = TvFonts.family, 
                         fontSize = (22f * scale).sp,
                         lineHeight = (28f * scale).sp,
                         fontWeight = FontWeight.Medium,
@@ -2160,6 +2161,7 @@ private fun QueuePanel(
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 state = listState,
+                contentPadding = PaddingValues(vertical = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 itemsIndexed(snapshot.queue, key = { _, track -> track.id }) { index, track ->
