@@ -38,6 +38,14 @@ data class Lyrics(
     }
 }
 
+/** 音源脚本自带的歌词（优先于 QQ/网易云接口）。 */
+data class SourceLyrics(
+    val lrc: String,
+    val translation: String? = null,
+    val romanization: String? = null,
+    val label: String = "音源歌词",
+)
+
 sealed interface LyricsState {
     data object Loading : LyricsState
     data class Ready(val lyrics: Lyrics) : LyricsState

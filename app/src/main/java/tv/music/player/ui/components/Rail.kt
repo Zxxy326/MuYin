@@ -29,7 +29,7 @@ fun <T> TvRail(
         state = listState,
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(vertical = 18.dp, horizontal = 2.dp),
+        contentPadding = PaddingValues(vertical = 26.dp, horizontal = 26.dp),
     ) {
         itemsIndexed(items) { index, item ->
             content(index, item, "$keyPrefix:$index")

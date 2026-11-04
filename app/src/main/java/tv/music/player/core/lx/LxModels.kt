@@ -33,6 +33,12 @@ data class LxLyricInfo(
     fun isUsable(): Boolean = lyric.isNotBlank()
 }
 
+/** 取流结果与实际提供链接的脚本，供播放失败时换源重试。 */
+data class LxPlayUrl(
+    val url: String,
+    val fileName: String,
+)
+
 /**
  * 网易云歌手搜索结果（/search?type=100）。
  */

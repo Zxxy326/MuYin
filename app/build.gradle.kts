@@ -15,8 +15,8 @@ android {
         applicationId = "tv.music.player"
         minSdk = 28
         targetSdk = 36
-        versionCode = providers.gradleProperty("tvmusic.versionCode").orNull?.toInt() ?: 17
-        versionName = providers.gradleProperty("tvmusic.versionName").orNull ?: "0.11.3"
+        versionCode = providers.gradleProperty("tvmusic.versionCode").orNull?.toInt() ?: 18
+        versionName = providers.gradleProperty("tvmusic.versionName").orNull ?: "0.11.4"
         val manifestUrl = providers.gradleProperty("tvmusic.updateManifest")
             .orElse("https://testingcf.jsdelivr.net/gh/Zxxy326/TV-Music@main/update.json")
             .get()
@@ -91,6 +91,7 @@ dependencies {
     implementation("wang.harlon.quickjs:wrapper-android:3.2.3")
     implementation("com.squareup.okhttp3:okhttp:5.3.2")
     implementation("androidx.media3:media3-exoplayer:1.10.1")
+    implementation("androidx.media3:media3-exoplayer-hls:1.10.1")
     implementation("androidx.media3:media3-session:1.10.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling:1.10.3")

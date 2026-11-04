@@ -12,6 +12,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import kotlinx.coroutines.launch
@@ -27,6 +29,7 @@ import tv.music.player.core.lx.LxJsEngine
 import tv.music.player.core.lyrics.LyricsDiskCache
 import tv.music.player.core.lyrics.LyricsMatchStore
 import tv.music.player.core.lyrics.LyricsRepository
+import tv.music.player.core.lyrics.SourceLyrics
 import tv.music.player.core.playback.DemoTrack
 import tv.music.player.core.playback.PlaybackController
 import tv.music.player.core.playback.PlaybackService
@@ -60,6 +63,20 @@ class AppContainer(context: Context) {
         diskCache = LyricsDiskCache(File(appContext.cacheDir, "lyrics")),
         matchStore = LyricsMatchStore(appContext),
         searchApi = onlineSearch,
+        sourceLyricsProvider = { track ->
+            if (!track.isOnline) {
+                null
+            } else {
+                val quality = settings.settings.first().quality.lxQuality
+                lxEngine.getLyric(track.onlineSource, songInfo(track), quality)?.let { lyric ->
+                    SourceLyrics(
+                        lrc = lyric.lyric,
+                        translation = lyric.tlyric,
+                        romanization = lyric.rlyric,
+                    )
+                }
+            }
+        },
     )
 
     val library = LibraryStore(appContext)
@@ -120,34 +137,54 @@ class AppContainer(context: Context) {
     }
 
     private val streamUrlCache = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long>>()
+    private val failedScriptsByTrack = java.util.concurrent.ConcurrentHashMap<String, MutableSet<String>>()
+    private val lastScriptByTrack = java.util.concurrent.ConcurrentHashMap<String, String>()
 
-    private suspend fun resolveStreamUrl(track: DemoTrack, preferredQuality: String?): String? {
+    private fun songInfo(track: DemoTrack): Map<String, Any?> = mapOf(
+        "id" to track.onlineSongId,
+        "songmid" to track.onlineSongId,
+        "songId" to track.onlineSongId,
+        "musicid" to track.onlineSongNumericId,
+        "hash" to track.onlineHash.ifBlank { track.onlineSongId },
+        "name" to track.title,
+        "singer" to track.artist,
+        "artist" to track.artist,
+        "album" to track.album,
+        "albumName" to track.album,
+        "albumMid" to track.onlineAlbumMid,
+        "strMediaMid" to track.onlineStrMediaMid,
+        "interval" to track.durationMs / 1000L,
+        "duration" to track.durationMs / 1000L,
+        "pic" to track.coverUrl,
+        "cover" to track.coverUrl,
+    )
+
+    private suspend fun resolveStreamUrl(
+        track: DemoTrack,
+        preferredQuality: String?,
+        attempt: Int = 0,
+    ): String? {
         if (!track.isOnline) return null
         if (!lxEngine.ready()) return null
         val quality = settings.settings.first().quality.lxQuality
-        val cacheKey = "${track.onlineSource}:${track.onlineSongId}:$quality"
+        val qualityKey = preferredQuality ?: quality
+        val cacheKey = "${track.onlineSource}:${track.onlineSongId}:$qualityKey"
+        val trackKey = "${track.onlineSource}:${track.onlineSongId}"
         val now = android.os.SystemClock.elapsedRealtime()
-        streamUrlCache[cacheKey]?.let { (url, at) ->
-            if (now - at < 4 * 60_000L) return url
+        if (attempt == 0) {
+            streamUrlCache[cacheKey]?.let { (url, at) ->
+                if (now - at < 4 * 60_000L) return url
+            }
+            failedScriptsByTrack.remove(trackKey)
+        } else {
+            streamUrlCache.remove(cacheKey)
+            lastScriptByTrack[trackKey]?.let { file ->
+                failedScriptsByTrack.getOrPut(trackKey) { java.util.concurrent.ConcurrentHashMap.newKeySet() } += file
+            }
+            // 最后一轮允许重新尝试所有脚本（换音质往往能拿到不同的链接）
+            if (attempt >= 3) failedScriptsByTrack.remove(trackKey)
         }
-        val info = mapOf(
-            "id" to track.onlineSongId,
-            "songmid" to track.onlineSongId,
-            "songId" to track.onlineSongId,
-            "musicid" to track.onlineSongNumericId,
-            "hash" to track.onlineHash.ifBlank { track.onlineSongId },
-            "name" to track.title,
-            "singer" to track.artist,
-            "artist" to track.artist,
-            "album" to track.album,
-            "albumName" to track.album,
-            "albumMid" to track.onlineAlbumMid,
-            "strMediaMid" to track.onlineStrMediaMid,
-            "interval" to track.durationMs / 1000L,
-            "duration" to track.durationMs / 1000L,
-            "pic" to track.coverUrl,
-            "cover" to track.coverUrl,
-        )
+        val info = songInfo(track)
         val candidates = if (preferredQuality != null) {
             listOf(preferredQuality, "flac", "320k", "128k")
         } else {
@@ -156,17 +193,97 @@ class AppContainer(context: Context) {
                 else -> listOf("128k", "320k", "flac")
             }
         }
+        val excluded = failedScriptsByTrack[trackKey].orEmpty()
         for (candidate in candidates.distinct()) {
-            val url = lxEngine.getPlayUrl(track.onlineSource, info, candidate)
-            if (!url.isNullOrBlank() && isPlayable(url)) {
+            val resolved = lxEngine.getPlayUrlWithOrigin(
+                source = track.onlineSource,
+                songInfo = info,
+                quality = candidate,
+                excludeFiles = excluded,
+                validate = { url -> withContext(Dispatchers.IO) { isPlayable(url) } },
+            ) ?: continue
+            val stamp = android.os.SystemClock.elapsedRealtime()
+            streamUrlCache.entries.removeAll { stamp - it.value.second > 5 * 60_000L }
+            streamUrlCache[cacheKey] = resolved.url to stamp
+            lastScriptByTrack[trackKey] = resolved.fileName
+            failedScriptsByTrack.remove(trackKey)
+            return resolved.url
+        }
+        if (attempt >= 1) {
+            crossSourceFallback(track, preferredQuality)?.let { url ->
                 val stamp = android.os.SystemClock.elapsedRealtime()
-                streamUrlCache.entries.removeAll { stamp - it.value.second > 5 * 60_000L }
                 streamUrlCache[cacheKey] = url to stamp
                 return url
             }
         }
         return null
     }
+
+    /**
+     * 本平台脚本全部失败时，按歌名/歌手到其它平台搜索同名歌曲取流。
+     * 只在重试阶段调用，避免正常点歌时拖慢解析。
+     */
+    private suspend fun crossSourceFallback(track: DemoTrack, preferredQuality: String?): String? {
+        val title = track.title.trim()
+        if (title.isBlank()) return null
+        val keyword = listOf(title, track.artist.trim()).filter { it.isNotBlank() }.joinToString(" ")
+        val quality = preferredQuality ?: settings.settings.first().quality.lxQuality
+        val qualityChain = when (quality) {
+            "flac" -> listOf("flac", "320k", "128k")
+            "320k" -> listOf("320k", "128k", "flac")
+            else -> listOf("128k", "320k", "flac")
+        }
+        val platforms = listOf("tx", "wy", "kw", "kg", "mg").filter { it != track.onlineSource }
+        for (source in platforms) {
+            val result = withTimeoutOrNull(8_000L) {
+                runCatching { lxEngine.search(keyword, source, 1, 8) }.getOrNull()
+            } ?: continue
+            val candidates = result.list.filter { matchesTrack(it, track) }
+            for (item in candidates) {
+                val info = mapOf(
+                    "id" to item.id.ifBlank { item.songmid },
+                    "songmid" to item.songmid.ifBlank { item.id },
+                    "songId" to item.id,
+                    "hash" to item.hash.ifBlank { item.songmid },
+                    "name" to item.name,
+                    "singer" to item.singer,
+                    "artist" to item.singer,
+                    "album" to item.albumName,
+                    "albumName" to item.albumName,
+                    "interval" to item.duration / 1000L,
+                    "duration" to item.duration / 1000L,
+                    "pic" to item.pic,
+                    "cover" to item.pic,
+                )
+                for (q in qualityChain) {
+                    val resolved = lxEngine.getPlayUrlWithOrigin(
+                        source = source,
+                        songInfo = info,
+                        quality = q,
+                        validate = { url -> withContext(Dispatchers.IO) { isPlayable(url) } },
+                    ) ?: continue
+                    Log.i("TVMusicLx", "cross-source ${track.onlineSource}->$source '${item.name}/${item.singer}'")
+                    return resolved.url
+                }
+            }
+        }
+        return null
+    }
+
+    private fun matchesTrack(item: tv.music.player.core.lx.LxSongInfo, track: DemoTrack): Boolean {
+        val a = normalizeQuery(item.name)
+        val b = normalizeQuery(track.title)
+        if (a.isBlank() || b.isBlank()) return false
+        if (a != b && !a.contains(b) && !b.contains(a)) return false
+        val x = normalizeQuery(item.singer)
+        val y = normalizeQuery(track.artist)
+        return y.isBlank() || x.isBlank() || x.contains(y) || y.contains(x)
+    }
+
+    private fun normalizeQuery(text: String): String =
+        text.lowercase()
+            .replace(Regex("[\\(（\\[【].*?[\\)）\\]】]"), "")
+            .replace(Regex("[\\s·・,，.。-]"), "")
 
     private fun isPlayable(url: String): Boolean = runCatching {
         val request = Request.Builder()
@@ -189,9 +306,47 @@ class AppContainer(context: Context) {
                 Log.w("TVMusicLx", "stream probe type=$type ${url.take(100)}")
                 return false
             }
-            response.body.byteStream().use { it.read(ByteArray(2048)) > 0 }
+            val head = ByteArray(64)
+            var size = 0
+            response.body.byteStream().use { stream ->
+                while (size < head.size) {
+                    val read = stream.read(head, size, head.size - size)
+                    if (read < 0) break
+                    size += read
+                }
+            }
+            val sniffed = looksLikeAudio(head, size)
+            if (!sniffed) {
+                Log.w(
+                    "TVMusicLx",
+                    "stream probe unrecognized body ${head.take(size).joinToString("") { "%02x".format(it) }} ${url.take(100)}",
+                )
+            }
+            sniffed
         }
     }.getOrDefault(false)
+
+    /** 只放行能识别出音频/容器头的响应，避免把错误页或加密文件交给播放器。 */
+    private fun looksLikeAudio(bytes: ByteArray, size: Int): Boolean {
+        if (size < 4) return false
+        fun ascii(offset: Int, text: String): Boolean {
+            if (offset + text.length > size) return false
+            return text.indices.all { bytes[offset + it] == text[it].code.toByte() }
+        }
+        fun byte(offset: Int): Int = bytes[offset].toInt() and 0xFF
+        return when {
+            ascii(0, "ID3") || ascii(0, "fLaC") || ascii(0, "OggS") -> true
+            ascii(0, "RIFF") || ascii(0, "FLV") || ascii(0, "MAC ") -> true
+            ascii(0, "wvpk") || ascii(0, "ADIF") -> true
+            ascii(4, "ftyp") -> true
+            ascii(0, "#EXTM3U") -> true
+            byte(0) == 0xFF && (byte(1) and 0xE0) == 0xE0 -> true
+            byte(0) == 0x47 -> true
+            byte(0) == 0x0B && byte(1) == 0x77 -> true
+            byte(0) == 0x1A && byte(1) == 0x45 && byte(2) == 0xDF && byte(3) == 0xA3 -> true
+            else -> false
+        }
+    }
 
     private companion object {
         const val UA = "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"

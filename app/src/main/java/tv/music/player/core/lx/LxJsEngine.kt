@@ -54,6 +54,7 @@ class LxJsEngine(
         val pendingCalls: ConcurrentHashMap<String, CompletableDeferred<String>>,
         val scriptRequests: ConcurrentHashMap<String, Job>,
         val timeoutIds: ConcurrentHashMap<Long, ScheduledFuture<*>>,
+        val unsupportedActions: MutableSet<String> = ConcurrentHashMap.newKeySet(),
     )
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -118,6 +119,51 @@ class LxJsEngine(
     }
 
     private val callCounter = AtomicLong(0)
+
+    /** 脚本健康度：最近成功/失败时间，用于把常超时的脚本排到后面。 */
+    private val scriptLastSuccess = ConcurrentHashMap<String, Long>()
+    private val scriptLastFailure = ConcurrentHashMap<String, Long>()
+
+    private fun healthKey(action: String, source: String, fileName: String) =
+        "$action:$source:$fileName"
+
+    private fun recordScriptResult(action: String, source: String, fileName: String, ok: Boolean) {
+        val key = healthKey(action, source, fileName)
+        if (ok) {
+            scriptLastSuccess[key] = System.currentTimeMillis()
+            scriptLastFailure.remove(key)
+        } else {
+            scriptLastFailure[key] = System.currentTimeMillis()
+        }
+    }
+
+    private fun orderedTargets(
+        targets: List<String>,
+        action: String,
+        source: String,
+        preferredFile: String?,
+        excludeFiles: Set<String>,
+    ): List<String> {
+        val now = System.currentTimeMillis()
+        return targets
+            .filterNot { it in excludeFiles }
+            .sortedWith(
+                compareByDescending<String> { it == preferredFile }
+                    .thenByDescending { fileName ->
+                        val key = healthKey(action, source, fileName)
+                        val success = scriptLastSuccess[key] ?: 0L
+                        val failure = scriptLastFailure[key] ?: 0L
+                        when {
+                            failure > success && now - failure < SCRIPT_COOLDOWN_MS -> 0
+                            success > 0L -> 2
+                            else -> 1
+                        }
+                    }
+                    .thenByDescending { fileName ->
+                        scriptLastSuccess[healthKey(action, source, fileName)] ?: 0L
+                    }
+            )
+    }
 
     // ── 生命周期 ──────────────────────────────────────────────────────────
 
@@ -337,7 +383,21 @@ class LxJsEngine(
         return LxSearchResult(list = emptyList(), isEnd = true, total = 0)
     }
 
-    suspend fun getPlayUrl(source: String, songInfo: Map<String, Any?>, quality: String = "128k"): String? {
+    suspend fun getPlayUrl(source: String, songInfo: Map<String, Any?>, quality: String = "128k"): String? =
+        getPlayUrlWithOrigin(source, songInfo, quality)?.url
+
+    /**
+     * 取流并返回实际提供链接的脚本文件名。
+     * [excludeFiles] 用于播放失败后的换源重试：跳过已经失败的脚本。
+     */
+    suspend fun getPlayUrlWithOrigin(
+        source: String,
+        songInfo: Map<String, Any?>,
+        quality: String = "128k",
+        preferredFile: String? = null,
+        excludeFiles: Set<String> = emptySet(),
+        validate: (suspend (String) -> Boolean)? = null,
+    ): LxPlayUrl? {
         // 引擎未就绪时等待就绪（不抛异常），保证"第一下播放"也走落雪
         if (!awaitReady()) {
             Log.w(TAG, "getPlayUrl: engine not ready after await, return null")
@@ -350,27 +410,76 @@ class LxJsEngine(
             return null
         }
         val targets = sourceIndex[source] ?: return null
+        val ordered = orderedTargets(targets, "musicUrl", source, preferredFile, excludeFiles)
+        if (ordered.isEmpty()) {
+            Log.d(TAG, "getPlayUrl $source no script left (excluded=${excludeFiles.size})")
+            return null
+        }
         val startTime = System.currentTimeMillis()
-        // ⚡ 单脚本 musicUrl 超时从 60s 降到 20s：某个脚本卡死/超时不应阻塞整条
-        //    音质链与其它脚本。超时后立即尝试下一个脚本/下一个音质，用户点歌
-        //    不会出现长时间"正在解析音源…"。
-        for (fileName in targets) {
-            val inst = instances[fileName] ?: continue
-            val raw = try {
-                withContext(qjsDispatcher) { callJs(inst, "musicUrl", source, info, timeoutMs = 20000) }
-            } catch (t: Throwable) {
-                Log.e(TAG, "getPlayUrl $source failed (${inst.fileName})", t)
-                null
+        // 各脚本并发取流，谁先给出能通过 [validate] 的链接就用谁；
+        // 慢脚本不再阻塞整个音质链，坏链接也不会交给播放器。
+        return coroutineScope {
+            val results = kotlinx.coroutines.channels.Channel<LxPlayUrl>(
+                kotlinx.coroutines.channels.Channel.UNLIMITED
+            )
+            val jobs = ordered.map { fileName ->
+                launch {
+                    val inst = instances[fileName] ?: return@launch
+                    val raw = try {
+                        withContext(qjsDispatcher) {
+                            callJs(inst, "musicUrl", source, info, timeoutMs = MUSIC_URL_TIMEOUT_MS)
+                        }
+                    } catch (t: Throwable) {
+                        Log.e(TAG, "getPlayUrl $source failed (${inst.fileName})", t)
+                        null
+                    }
+                    val result = processUrlResult(raw)
+                    if (result != null) {
+                        results.send(LxPlayUrl(result, inst.fileName))
+                    } else {
+                        recordScriptResult("musicUrl", source, inst.fileName, false)
+                    }
+                }
             }
-            val result = processUrlResult(raw)
-            if (result != null) {
-                Log.d(TAG, "getPlayUrl $source/$quality via ${inst.fileName} -> ${result.take(120)} (${System.currentTimeMillis() - startTime}ms)")
-                return result
+            val closer = launch {
+                jobs.forEach { it.join() }
+                results.close()
+            }
+            val deadline = startTime + TOTAL_RESOLVE_TIMEOUT_MS
+            var found: LxPlayUrl? = null
+            while (found == null) {
+                val remaining = deadline - System.currentTimeMillis()
+                if (remaining <= 0L) break
+                val candidate = withTimeoutOrNull(remaining) {
+                    results.receiveCatching().getOrNull()
+                } ?: break
+                val ok = validate?.invoke(candidate.url) ?: true
+                if (ok) {
+                    found = candidate
+                    recordScriptResult("musicUrl", source, candidate.fileName, true)
+                } else {
+                    Log.w(TAG, "getPlayUrl $source rejected ${candidate.fileName} ${candidate.url.take(100)}")
+                    recordScriptResult("musicUrl", source, candidate.fileName, false)
+                }
+            }
+            jobs.forEach { it.cancel() }
+            closer.cancel()
+            if (found == null) {
+                val songId = (songInfo["id"] ?: songInfo["songmid"] ?: songInfo["hash"]).toString()
+                Log.w(
+                    TAG,
+                    "getPlayUrl $source/$quality all scripts failed " +
+                        "(songId=$songId, ${System.currentTimeMillis() - startTime}ms)",
+                )
+            }
+            found?.also {
+                Log.d(
+                    TAG,
+                    "getPlayUrl $source/$quality via ${it.fileName} -> ${it.url.take(120)} " +
+                        "(${System.currentTimeMillis() - startTime}ms)",
+                )
             }
         }
-        val songId = (songInfo["id"] ?: songInfo["songmid"] ?: songInfo["hash"]).toString()
-        Log.w(TAG, "getPlayUrl $source/$quality all scripts failed (songId=$songId, ${System.currentTimeMillis() - startTime}ms)")
-        return null
     }
 
     /**
@@ -387,14 +496,16 @@ class LxJsEngine(
         if (!awaitReady() || !isSourceEnabled(source)) return null
         val info = mapOf("musicInfo" to songInfo, "type" to quality)
         val targets = sourceIndex[source] ?: return null
-        for (fileName in targets) {
+        for (fileName in orderedTargets(targets, "lyric", source, null, emptySet())) {
             val inst = instances[fileName] ?: continue
+            if ("lyric" in inst.unsupportedActions) continue
             val raw = runCatching {
                 withContext(qjsDispatcher) {
-                    callJs(inst, "lyric", source, info, timeoutMs = 15_000)
+                    callJs(inst, "lyric", source, info, timeoutMs = LYRIC_TIMEOUT_MS)
                 }
-            }.getOrNull() ?: continue
+            }.getOrNull()
             val lyric = processLyricResult(raw)
+            recordScriptResult("lyric", source, inst.fileName, lyric != null)
             if (lyric != null && lyric.isUsable()) return lyric
         }
         return null
@@ -412,11 +523,12 @@ class LxJsEngine(
         if (!awaitReady() || !isSourceEnabled(source)) return null
         val info = mapOf("musicInfo" to songInfo, "type" to quality)
         val targets = sourceIndex[source] ?: return null
-        for (fileName in targets) {
+        for (fileName in orderedTargets(targets, "pic", source, null, emptySet())) {
             val inst = instances[fileName] ?: continue
+            if ("pic" in inst.unsupportedActions) continue
             val raw = runCatching {
                 withContext(qjsDispatcher) {
-                    callJs(inst, "pic", source, info, timeoutMs = 15_000)
+                    callJs(inst, "pic", source, info, timeoutMs = 8_000)
                 }
             }.getOrNull() ?: continue
             val pic = processUrlResult(raw)
@@ -484,7 +596,9 @@ class LxJsEngine(
             if (raw == null) return null
             val obj = runCatching { JSONObject(raw) }.getOrNull() ?: return raw
             if (obj.has("error")) {
-                Log.e(TAG, "callJs $action/$source JS error: ${obj.optString("error")}")
+                val message = obj.optString("error")
+                if (message.startsWith("action not support")) inst.unsupportedActions += action
+                Log.e(TAG, "callJs $action/$source JS error: $message")
                 return null
             }
             return obj.opt("value")
@@ -958,7 +1072,13 @@ class LxJsEngine(
 
     private fun jsStr(s: String): String = JSONObject.quote(s)
 
-    companion object { private const val TAG = "LxJsEngine" }
+    companion object {
+        private const val TAG = "LxJsEngine"
+        private const val MUSIC_URL_TIMEOUT_MS = 20_000L
+        private const val TOTAL_RESOLVE_TIMEOUT_MS = 22_000L
+        private const val LYRIC_TIMEOUT_MS = 5_000L
+        private const val SCRIPT_COOLDOWN_MS = 90_000L
+    }
 
     // ── shim：对齐 lx-music-mobile 的 user-api-preload.js ─────────────────
 

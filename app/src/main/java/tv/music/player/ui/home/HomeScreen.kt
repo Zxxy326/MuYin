@@ -66,6 +66,7 @@ import tv.music.player.core.playback.PlaybackController
 import tv.music.player.core.playback.DemoTrack
 import tv.music.player.core.theme.LocalTvAccent
 import tv.music.player.core.theme.TvColors
+import tv.music.player.core.theme.TvDimens
 import tv.music.player.core.theme.TvType
 import tv.music.player.ui.components.ChartCard
 import tv.music.player.ui.components.KeyHintBar
@@ -77,7 +78,6 @@ import tv.music.player.ui.components.SectionHeader
 import tv.music.player.ui.components.TvBackdrop
 import tv.music.player.ui.components.TvIcon
 import tv.music.player.ui.components.TvRail
-import tv.music.player.ui.components.TvSafeArea
 import tv.music.player.ui.components.WideCard
 import tv.music.player.ui.navigation.LocalActiveRoute
 import tv.music.player.ui.navigation.TvRoute
@@ -226,7 +226,11 @@ fun HomeScreen(
 
     Box(Modifier.fillMaxSize()) {
         TvBackdrop()
-        TvSafeArea {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 22.dp, vertical = TvDimens.SafeVertical)
+        ) {
             Column(
                 Modifier
                     .fillMaxSize()
@@ -254,11 +258,13 @@ fun HomeScreen(
                     online = online,
                     group = group,
                     onSettings = { navController.navigate(TvRoute.Settings.route) },
+                    modifier = Modifier.padding(horizontal = 26.dp),
                 )
                 Spacer(Modifier.height(16.dp))
                 HomeSearchBar(
                     group = group,
                     onClick = { navController.navigate(TvRoute.Search.route) },
+                    modifier = Modifier.padding(horizontal = 26.dp),
                 )
                 Spacer(Modifier.height(16.dp))
                 QuickRow(
@@ -268,18 +274,20 @@ fun HomeScreen(
                     onRecent = { navController.navigate(TvRoute.Recent.route) },
                     onSources = { navController.navigate(TvRoute.SettingsGroup.of("sources")) },
                     onLocal = { navController.navigate(TvRoute.LocalHub.route) },
+                    modifier = Modifier.padding(horizontal = 26.dp),
                 )
                 Spacer(Modifier.height(12.dp))
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxWidth().weight(1f),
-                    contentPadding = PaddingValues(bottom = 116.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(bottom = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                 item {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         SectionHeader(
                             "继续听",
+                            modifier = Modifier.padding(horizontal = 26.dp),
                             trailing = if (recent.isEmpty()) "演示推荐 · 播放后自动记录" else "最近播放 · 前 6 首",
                         )
                         TvRail(
@@ -299,8 +307,12 @@ fun HomeScreen(
                     }
                 }
                 item {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        SectionHeader("猜你喜欢", trailing = guessTrailing)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SectionHeader(
+                            "猜你喜欢",
+                            modifier = Modifier.padding(horizontal = 26.dp),
+                            trailing = guessTrailing,
+                        )
                         TvRail(
                             items = guessTracks,
                             keyPrefix = "rail:guess",
@@ -318,8 +330,12 @@ fun HomeScreen(
                     }
                 }
                 item {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        SectionHeader("热门榜单", trailing = "QQ 音乐 / 网易云 · 每日更新")
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SectionHeader(
+                            "热门榜单",
+                            modifier = Modifier.padding(horizontal = 26.dp),
+                            trailing = "QQ 音乐 / 网易云 · 每日更新",
+                        )
                         TvRail(
                             items = charts,
                             keyPrefix = "rail:charts",
@@ -340,28 +356,28 @@ fun HomeScreen(
                         }
                     }
                 }
-                item {
-                    Row(
-                        Modifier.fillMaxWidth().padding(top = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        KeyHintBar(
-                            hints = listOf(
-                                "方向" to "移动焦点",
-                                "OK" to "播放 / 进入",
-                                "返回" to "上一级",
-                                "长按返回" to "回到首页",
-                                "MENU" to "设置",
-                            )
-                        )
-                        Spacer(Modifier.weight(1f))
-                        Text(
-                            "实时取流 · LX 音源",
-                            style = TvType.caption,
-                            color = TvColors.TextTertiary,
-                        )
-                    }
                 }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 26.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    KeyHintBar(
+                        hints = listOf(
+                            "方向" to "移动焦点",
+                            "OK" to "播放 / 进入",
+                            "返回" to "上一级",
+                            "长按返回" to "回到首页",
+                            "MENU" to "设置",
+                        )
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        "实时取流 · LX 音源",
+                        style = TvType.caption,
+                        color = TvColors.TextTertiary,
+                    )
                 }
             }
         }
@@ -369,9 +385,13 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeSearchBar(group: TvFocusGroup, onClick: () -> Unit) {
+private fun HomeSearchBar(
+    group: TvFocusGroup,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     TvSurface(
-        modifier = Modifier.fillMaxWidth().height(60.dp),
+        modifier = modifier.fillMaxWidth().height(60.dp),
         shape = RoundedCornerShape(32.dp),
         baseColor = TvColors.Surface.copy(alpha = 0.9f),
         focusedScale = 1.015f,
@@ -406,9 +426,10 @@ private fun HomeHeader(
     online: Boolean,
     group: TvFocusGroup,
     onSettings: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val accent = LocalTvAccent.current
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -478,9 +499,10 @@ private fun QuickRow(
     onRecent: () -> Unit,
     onSources: () -> Unit,
     onLocal: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        Modifier.fillMaxWidth(),
+        modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         QuickTile(
