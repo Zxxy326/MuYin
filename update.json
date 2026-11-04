@@ -1,8 +1,8 @@
 {
-  "versionCode": 17,
-  "versionName": "0.11.3",
-  "apkUrl": "https://github.com/Zxxy326/TV-Music/releases/download/v0.11.3-m3b2/TV-Music-0.11.3-public.apk",
-  "sha256": "877076b0319eda54ed2100b04b5ecdd22144e51ad555a3bf6ec883f99e517512",
-  "sizeBytes": 68016484,
-  "notes": "0.11.3：首页接入 QQ 热歌/飙升与网易云热歌/飙升真实榜单，并按本地收藏生成推荐；本地音乐支持内嵌封面与内嵌歌词，未登录时在线封面也能正常显示；账号页支持直接粘贴 Cookie，音源市场放宽大文件安装。"
+  "versionCode": 18,
+  "versionName": "0.11.4",
+  "apkUrl": "https://github.com/Zxxy326/TV-Music/releases/download/v0.11.4-m3b2/TV-Music-0.11.4-public.apk",
+  "sha256": "dbfe1340c9676615b0f285fa64d674cd3508a92efb5154b99042b1b5c092e7a1",
+  "sizeBytes": 68229476,
+  "notes": "0.11.4：修复首页焦点环与底部按键指南被裁切；在线取流改为多脚本并发，播放失败时自动换源重试，解决部分歌曲 ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED；歌词优先使用音源自带，缺失时按歌名/歌手自动匹配；另提供 arm64-v8a 与 armeabi-v7a 分架构安装包。"
 }
