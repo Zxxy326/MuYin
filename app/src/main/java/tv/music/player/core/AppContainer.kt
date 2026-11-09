@@ -155,6 +155,37 @@ class AppContainer(context: Context) {
         return runCatching { lxEngine.getPic(track.onlineSource, songInfo(track), quality) }.getOrNull()
     }
 
+    private val coverLookupCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    /**
+     * 真实封面补全：已有封面直接返回；在线曲目先试 JS pic；
+     * 仍缺失（含演示/本地曲目）则按歌名/歌手到 QQ 检索同名歌曲取封面，避免默认黑胶。
+     */
+    suspend fun resolveCover(track: DemoTrack): String? {
+        if (track.coverUrl.isNotBlank()) return track.coverUrl
+        val key = "${track.title}|${track.artist}"
+        coverLookupCache[key]?.let { return it.ifBlank { null } }
+        if (track.isOnline) {
+            resolvePic(track)?.let {
+                coverLookupCache[key] = it
+                return it
+            }
+        }
+        val title = track.title.trim()
+        if (title.isBlank()) return null
+        val keyword = listOf(title, track.artist.trim()).filter { it.isNotBlank() }.joinToString(" ")
+        val result = runCatching { onlineSearch.search(keyword, 1, 5) }.getOrNull() ?: return null
+        val nt = normalizeQuery(title)
+        val na = normalizeQuery(track.artist)
+        val match = result.list.firstOrNull {
+            normalizeQuery(it.title) == nt &&
+                (na.isBlank() || normalizeQuery(it.artist).contains(na) || na.contains(normalizeQuery(it.artist)))
+        } ?: result.list.firstOrNull { normalizeQuery(it.title) == nt }
+        val url = match?.coverUrl.orEmpty()
+        coverLookupCache[key] = url
+        return url.ifBlank { null }
+    }
+
     /** 内置网易云兜底：官方 outer/url 直链（无需登录，VIP 曲目可能 404 由探测过滤）。 */
     private suspend fun resolveBuiltInWy(track: DemoTrack): String? {
         val id = track.onlineSongId.toLongOrNull() ?: return null

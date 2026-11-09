@@ -1,8 +1,8 @@
 {
-  "versionCode": 19,
-  "versionName": "0.11.5",
-  "apkUrl": "https://github.com/Zxxy326/TV-Music/releases/download/v0.11.5-m3b2/TV-Music-0.11.5-public.apk",
-  "sha256": "572018e4df4a208dbf25276bf461d909e86c24baf6c2215795459308b32f3649",
+  "versionCode": 20,
+  "versionName": "0.11.6",
+  "apkUrl": "https://github.com/Zxxy326/TV-Music/releases/download/v0.11.6-m3b2/TV-Music-0.11.6-public.apk",
+  "sha256": "77b81c1f24f41bf5f408024534942636e21fda449691f68ba5db37c238ffe6cb",
   "sizeBytes": 20406041,
-  "notes": "0.11.5：启用 R8 大幅瘦身（通用包约20MB）；新增首页/歌单/我的三页导航与顶栏常驻「正在播放」入口；首页更紧凑；音源加密容器预过滤、URL 持久化缓存、手动选择音源/重新解析、内置网易云兜底与 JS 封面补全。"
+  "notes": "0.11.6：继续听 / 猜你喜欢 / 歌单卡片加载真实歌曲封面（缺封面时按歌名/歌手自动检索），不再显示默认黑胶占位。"
 }

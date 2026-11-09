@@ -99,7 +99,7 @@ fun TvMusicApp() {
             CompositionLocalProvider(
                 LocalCapsuleHost provides capsuleHost,
                 LocalActiveRoute provides route,
-                LocalTrackPicProvider provides container::resolvePic,
+                LocalTrackPicProvider provides container::resolveCover,
             ) {
                 Box(Modifier.fillMaxSize().background(TvColors.Background)) {
                     TvNavHost(

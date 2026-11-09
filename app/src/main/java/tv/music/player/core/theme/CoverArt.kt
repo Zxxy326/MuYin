@@ -75,7 +75,7 @@ fun rememberTrackCoverArt(track: DemoTrack): CoverArt {
     val provider = LocalTrackPicProvider.current
     var url by remember(track.id, track.artworkUrl) { mutableStateOf(track.artworkUrl) }
     LaunchedEffect(track.id, track.artworkUrl) {
-        if (url.isBlank() && track.isOnline && provider != null) {
+        if (url.isBlank() && provider != null) {
             val pic = withContext(Dispatchers.IO) { runCatching { provider.invoke(track) }.getOrNull() }
             if (!pic.isNullOrBlank()) url = pic
         }
