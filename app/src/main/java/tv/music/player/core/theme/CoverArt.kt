@@ -14,6 +14,7 @@ import android.util.LruCache
 import android.util.Size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,9 +31,13 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import tv.music.player.core.lyrics.EmbeddedTags
+import tv.music.player.core.playback.DemoTrack
 import java.util.concurrent.TimeUnit
 
 class CoverArt(val image: ImageBitmap, val accent: Color)
+
+/** 封面缺失时由音源 JS pic 动作补全（对齐上游 v1.7.2）。 */
+val LocalTrackPicProvider = compositionLocalOf<(suspend (DemoTrack) -> String?)?> { null }
 
 private val coverCache = object : LruCache<String, CoverArt>(16) {}
 private val fallbackCoverArt: CoverArt by lazy { buildCoverArt() }
@@ -63,6 +68,19 @@ fun rememberCoverArt(url: String? = null): CoverArt {
         }
     }
     return art
+}
+
+@Composable
+fun rememberTrackCoverArt(track: DemoTrack): CoverArt {
+    val provider = LocalTrackPicProvider.current
+    var url by remember(track.id, track.artworkUrl) { mutableStateOf(track.artworkUrl) }
+    LaunchedEffect(track.id, track.artworkUrl) {
+        if (url.isBlank() && track.isOnline && provider != null) {
+            val pic = withContext(Dispatchers.IO) { runCatching { provider.invoke(track) }.getOrNull() }
+            if (!pic.isNullOrBlank()) url = pic
+        }
+    }
+    return rememberCoverArt(url)
 }
 
 private fun loadCover(context: Context, url: String): CoverArt? = runCatching {

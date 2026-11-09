@@ -15,8 +15,8 @@ android {
         applicationId = "tv.music.player"
         minSdk = 28
         targetSdk = 36
-        versionCode = providers.gradleProperty("tvmusic.versionCode").orNull?.toInt() ?: 18
-        versionName = providers.gradleProperty("tvmusic.versionName").orNull ?: "0.11.4"
+        versionCode = providers.gradleProperty("tvmusic.versionCode").orNull?.toInt() ?: 19
+        versionName = providers.gradleProperty("tvmusic.versionName").orNull ?: "0.11.5"
         val manifestUrl = providers.gradleProperty("tvmusic.updateManifest")
             .orElse("https://testingcf.jsdelivr.net/gh/Zxxy326/TV-Music@main/update.json")
             .get()
@@ -28,8 +28,8 @@ android {
             applicationIdSuffix = ".debug"
         }
         release {
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

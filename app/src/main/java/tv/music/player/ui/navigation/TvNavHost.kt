@@ -39,6 +39,8 @@ import tv.music.player.ui.library.DownloadsScreen
 import tv.music.player.ui.local.DeviceMusicScreen
 import tv.music.player.ui.local.LocalHubScreen
 import tv.music.player.ui.local.SmbScreen
+import tv.music.player.ui.mine.MineScreen
+import tv.music.player.ui.playlists.PlaylistsScreen
 import tv.music.player.ui.source.SourceMarketScreen
 import tv.music.player.ui.source.SourceReleaseScreen
 import tv.music.player.ui.library.LibraryScreen
@@ -82,6 +84,19 @@ fun TvNavHost(
             HomeScreen(
                 playback = playback,
                 library = library,
+                navController = navController,
+            )
+        }
+        composable(TvRoute.Playlists.route) {
+            PlaylistsScreen(
+                account = account,
+                playback = playback,
+                navController = navController,
+            )
+        }
+        composable(TvRoute.Mine.route) {
+            MineScreen(
+                playback = playback,
                 navController = navController,
             )
         }

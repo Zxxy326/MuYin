@@ -183,6 +183,7 @@ fun PlayerScreen(
     var lyricsState by remember(snapshot.track.id) { mutableStateOf<LyricsState>(LyricsState.Loading) }
     var lyricsAttempt by remember(snapshot.track.id) { mutableIntStateOf(0) }
     var lyricsMatchVisible by remember { mutableStateOf(false) }
+    var sourcePanelVisible by remember { mutableStateOf(false) }
     var lyricCandidates by remember { mutableStateOf<List<LyricCandidate>>(emptyList()) }
     var lyricMatchIndex by remember { mutableIntStateOf(0) }
     var lyricMatchLoading by remember { mutableStateOf(false) }
@@ -196,11 +197,15 @@ fun PlayerScreen(
     }
 
     val windowFocused = LocalWindowInfo.current.isWindowFocused
-    LaunchedEffect(controlsVisible, queueVisible, lyricsPanelVisible, lyricsMatchVisible, windowFocused) {
+    LaunchedEffect(controlsVisible, queueVisible, lyricsPanelVisible, lyricsMatchVisible, sourcePanelVisible, windowFocused) {
         if (!windowFocused) return@LaunchedEffect
         when {
             lyricsMatchVisible -> return@LaunchedEffect
             lyricsPanelVisible -> return@LaunchedEffect
+            sourcePanelVisible -> {
+                delay(90)
+                group.focusWhenReady("source:auto", timeoutMs = 1_200L)
+            }
             queueVisible -> {
                 delay(90)
                 val key = snapshot.queue.firstOrNull()?.let { "queue:${it.id}" } ?: "queue:close"
@@ -217,15 +222,16 @@ fun PlayerScreen(
         }
     }
 
-    LaunchedEffect(chromeTick, chromeVisible, controlsVisible, queueVisible, lyricsPanelVisible, lyricsMatchVisible) {
+    LaunchedEffect(chromeTick, chromeVisible, controlsVisible, queueVisible, lyricsPanelVisible, lyricsMatchVisible, sourcePanelVisible) {
         if (!chromeVisible) return@LaunchedEffect
-        if (queueVisible || lyricsPanelVisible || lyricsMatchVisible) return@LaunchedEffect
+        if (queueVisible || lyricsPanelVisible || lyricsMatchVisible || sourcePanelVisible) return@LaunchedEffect
         delay(5_000L)
         chromeVisible = false
         controlsVisible = false
     }
 
     BackHandler(enabled = lyricsMatchVisible) { lyricsMatchVisible = false }
+    BackHandler(enabled = sourcePanelVisible) { sourcePanelVisible = false }
     BackHandler(enabled = queueVisible) { queueVisible = false }
     BackHandler(enabled = lyricsPanelVisible) { lyricsPanelVisible = false }
     BackHandler(enabled = !queueVisible && !lyricsPanelVisible) { onBack() }
@@ -275,6 +281,11 @@ fun PlayerScreen(
     fun openLyricsPanel() {
         lyricOption = settings.lyricStyle.ordinal
         lyricsPanelVisible = true
+    }
+
+    fun openSourcePanel() {
+        controlsVisible = false
+        sourcePanelVisible = true
     }
 
     fun openLyricMatch() {
@@ -513,7 +524,7 @@ fun PlayerScreen(
 
         AnimatedVisibility(
             visible = chromeVisible && !controlsVisible && !queueVisible &&
-                !lyricsPanelVisible && !lyricsMatchVisible,
+                !lyricsPanelVisible && !lyricsMatchVisible && !sourcePanelVisible,
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
             enter = fadeIn(tween(200)),
             exit = fadeOut(tween(220)),
@@ -564,7 +575,32 @@ fun PlayerScreen(
                     controlsVisible = false
                     openLyricsPanel()
                 },
+                onOpenSource = { openSourcePanel() },
                 onClose = { controlsVisible = false },
+            )
+        }
+
+        AnimatedVisibility(
+            visible = sourcePanelVisible,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 48.dp, vertical = 20.dp),
+            enter = slideInVertically(tween(200)) { it } + fadeIn(tween(160)),
+            exit = slideOutVertically(tween(180)) { it } + fadeOut(tween(120)),
+        ) {
+            SourcePanel(
+                track = snapshot.track,
+                sources = playback.availableSources(),
+                group = group,
+                onSelect = { source ->
+                    sourcePanelVisible = false
+                    playback.reresolve(source)
+                },
+                onRefresh = {
+                    sourcePanelVisible = false
+                    playback.reresolve(null)
+                },
+                onClose = { sourcePanelVisible = false },
             )
         }
 
@@ -1921,6 +1957,7 @@ private fun ControlsPanel(
     onDownload: () -> Unit,
     onOpenQueue: () -> Unit,
     onOpenLyrics: () -> Unit,
+    onOpenSource: () -> Unit,
     onClose: () -> Unit,
 ) {
     TvSurface(
@@ -1934,7 +1971,16 @@ private fun ControlsPanel(
                 false
             } else {
                 when (event.key) {
-                    Key.DirectionUp, Key.DirectionDown -> {
+                    Key.DirectionUp -> {
+                        val active = group.activeKey.orEmpty()
+                        if (active == "controls:queue" || active == "controls:source") {
+                            onClose()
+                        } else {
+                            group.focus("controls:queue")
+                        }
+                        true
+                    }
+                    Key.DirectionDown -> {
                         onClose()
                         true
                     }
@@ -1977,6 +2023,13 @@ private fun ControlsPanel(
                     group = group,
                     focusKey = "controls:queue",
                     onClick = onOpenQueue,
+                )
+                Spacer(Modifier.width(10.dp))
+                ActionChip(
+                    label = "音源",
+                    group = group,
+                    focusKey = "controls:source",
+                    onClick = onOpenSource,
                 )
             }
             Spacer(Modifier.height(16.dp))
@@ -2075,6 +2128,77 @@ private fun ControlsPanel(
             )
         }
     }
+}
+
+@Composable
+private fun SourcePanel(
+    track: DemoTrack,
+    sources: List<String>,
+    group: TvFocusGroup,
+    onSelect: (String) -> Unit,
+    onRefresh: () -> Unit,
+    onClose: () -> Unit,
+) {
+    TvSurface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        baseColor = TvColors.Surface.copy(alpha = 0.95f),
+        focusedScale = 1.0f,
+        glowSize = 0.dp,
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 26.dp, vertical = 18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("播放音源", style = TvType.title, color = TvColors.TextPrimary)
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    "当前：${track.onlineSource.ifBlank { "本地" }} · 选择后重新解析并保留进度",
+                    style = TvType.caption,
+                    color = TvColors.TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Spacer(Modifier.height(14.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ActionChip(
+                    label = "自动 / 重新解析",
+                    group = group,
+                    focusKey = "source:auto",
+                    primary = true,
+                    onClick = onRefresh,
+                )
+                ActionChip(
+                    label = "关闭",
+                    group = group,
+                    focusKey = "source:close",
+                    onClick = onClose,
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            sources.chunked(4).forEach { rowSources ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    rowSources.forEach { source ->
+                        ActionChip(
+                            label = sourceLabel(source),
+                            group = group,
+                            focusKey = "source:$source",
+                            onClick = { onSelect(source) },
+                        )
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+            }
+        }
+    }
+}
+
+private fun sourceLabel(source: String): String = when (source) {
+    "tx" -> "QQ音乐"
+    "wy" -> "网易云"
+    "kw" -> "酷我"
+    "kg" -> "酷狗"
+    "mg" -> "咪咕"
+    else -> source
 }
 
 @Composable

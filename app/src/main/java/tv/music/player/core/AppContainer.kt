@@ -33,6 +33,8 @@ import tv.music.player.core.lyrics.SourceLyrics
 import tv.music.player.core.playback.DemoTrack
 import tv.music.player.core.playback.PlaybackController
 import tv.music.player.core.playback.PlaybackService
+import tv.music.player.core.playback.PlaybackUrlCache
+import tv.music.player.core.playback.StreamUrlValidator
 import tv.music.player.core.search.OnlineSearchApi
 import tv.music.player.core.search.SearchHistoryStore
 import tv.music.player.core.settings.SettingsRepository
@@ -96,6 +98,7 @@ class AppContainer(context: Context) {
         onTrackStarted = library::recordPlayed,
         smbFactory = smbFactory,
         settingsProvider = { latestSettings },
+        sourcesProvider = { availableSources() },
     )
     val account = AccountStore(appContext)
     val companionBridge = CompanionBridge()
@@ -139,6 +142,28 @@ class AppContainer(context: Context) {
     private val streamUrlCache = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long>>()
     private val failedScriptsByTrack = java.util.concurrent.ConcurrentHashMap<String, MutableSet<String>>()
     private val lastScriptByTrack = java.util.concurrent.ConcurrentHashMap<String, String>()
+    val playbackUrlCache = PlaybackUrlCache(appContext)
+
+    /** 供播放器「选择音源」列出：JS 注册源 + 内置兜底源。 */
+    fun availableSources(): List<String> =
+        (lxEngine.getSources().keys + listOf("wy", "tx")).distinct()
+
+    /** 封面缺失时用 JS 音源 pic 动作补全（对齐上游 v1.7.2）。 */
+    suspend fun resolvePic(track: DemoTrack): String? {
+        if (!track.isOnline) return null
+        val quality = settings.settings.first().quality.lxQuality
+        return runCatching { lxEngine.getPic(track.onlineSource, songInfo(track), quality) }.getOrNull()
+    }
+
+    /** 内置网易云兜底：官方 outer/url 直链（无需登录，VIP 曲目可能 404 由探测过滤）。 */
+    private suspend fun resolveBuiltInWy(track: DemoTrack): String? {
+        val id = track.onlineSongId.toLongOrNull() ?: return null
+        if (id <= 0) return null
+        val url = "https://music.163.com/song/media/outer/url?id=$id.mp3"
+        return withContext(Dispatchers.IO) {
+            if (StreamUrlValidator.isUsable("wy", url) && isPlayable(url)) url else null
+        }
+    }
 
     private fun songInfo(track: DemoTrack): Map<String, Any?> = mapOf(
         "id" to track.onlineSongId,
@@ -163,25 +188,30 @@ class AppContainer(context: Context) {
         track: DemoTrack,
         preferredQuality: String?,
         attempt: Int = 0,
+        preferredSource: String? = null,
+        forceRefresh: Boolean = false,
     ): String? {
         if (!track.isOnline) return null
         if (!lxEngine.ready()) return null
         val quality = settings.settings.first().quality.lxQuality
         val qualityKey = preferredQuality ?: quality
-        val cacheKey = "${track.onlineSource}:${track.onlineSongId}:$qualityKey"
-        val trackKey = "${track.onlineSource}:${track.onlineSongId}"
+        val songKey = "${track.onlineSource}:${track.onlineSongId}"
+        val cacheKey = "$songKey:$qualityKey"
+        val trackKey = songKey
         val now = android.os.SystemClock.elapsedRealtime()
-        if (attempt == 0) {
+        val headSource = preferredSource?.takeIf { it.isNotBlank() } ?: track.onlineSource
+        if (!forceRefresh && attempt == 0) {
+            playbackUrlCache.get(songKey, headSource, qualityKey)?.let { return it }
             streamUrlCache[cacheKey]?.let { (url, at) ->
                 if (now - at < 4 * 60_000L) return url
             }
             failedScriptsByTrack.remove(trackKey)
         } else {
             streamUrlCache.remove(cacheKey)
+            if (forceRefresh) playbackUrlCache.remove(songKey, headSource, qualityKey)
             lastScriptByTrack[trackKey]?.let { file ->
                 failedScriptsByTrack.getOrPut(trackKey) { java.util.concurrent.ConcurrentHashMap.newKeySet() } += file
             }
-            // 最后一轮允许重新尝试所有脚本（换音质往往能拿到不同的链接）
             if (attempt >= 3) failedScriptsByTrack.remove(trackKey)
         }
         val info = songInfo(track)
@@ -194,20 +224,32 @@ class AppContainer(context: Context) {
             }
         }
         val excluded = failedScriptsByTrack[trackKey].orEmpty()
-        for (candidate in candidates.distinct()) {
-            val resolved = lxEngine.getPlayUrlWithOrigin(
-                source = track.onlineSource,
-                songInfo = info,
-                quality = candidate,
-                excludeFiles = excluded,
-                validate = { url -> withContext(Dispatchers.IO) { isPlayable(url) } },
-            ) ?: continue
-            val stamp = android.os.SystemClock.elapsedRealtime()
-            streamUrlCache.entries.removeAll { stamp - it.value.second > 5 * 60_000L }
-            streamUrlCache[cacheKey] = resolved.url to stamp
-            lastScriptByTrack[trackKey] = resolved.fileName
-            failedScriptsByTrack.remove(trackKey)
-            return resolved.url
+        val sources = listOfNotNull(preferredSource?.takeIf { it.isNotBlank() }, track.onlineSource).distinct()
+        for (source in sources) {
+            for (candidate in candidates.distinct()) {
+                val resolved = lxEngine.getPlayUrlWithOrigin(
+                    source = source,
+                    songInfo = info,
+                    quality = candidate,
+                    excludeFiles = excluded,
+                    validate = { url ->
+                        StreamUrlValidator.isUsable(source, url) &&
+                            withContext(Dispatchers.IO) { isPlayable(url) }
+                    },
+                )
+                if (resolved != null) {
+                    rememberUrl(cacheKey, songKey, source, qualityKey, resolved.url)
+                    lastScriptByTrack[trackKey] = resolved.fileName
+                    failedScriptsByTrack.remove(trackKey)
+                    return resolved.url
+                }
+                if (source == "wy") {
+                    resolveBuiltInWy(track)?.let { url ->
+                        rememberUrl(cacheKey, songKey, "wy", qualityKey, url)
+                        return url
+                    }
+                }
+            }
         }
         if (attempt >= 1) {
             crossSourceFallback(track, preferredQuality)?.let { url ->
@@ -217,6 +259,13 @@ class AppContainer(context: Context) {
             }
         }
         return null
+    }
+
+    private fun rememberUrl(cacheKey: String, songKey: String, source: String, quality: String, url: String) {
+        val stamp = android.os.SystemClock.elapsedRealtime()
+        streamUrlCache.entries.removeAll { stamp - it.value.second > 5 * 60_000L }
+        streamUrlCache[cacheKey] = url to stamp
+        playbackUrlCache.put(songKey, source, quality, url)
     }
 
     /**
@@ -260,10 +309,24 @@ class AppContainer(context: Context) {
                         source = source,
                         songInfo = info,
                         quality = q,
-                        validate = { url -> withContext(Dispatchers.IO) { isPlayable(url) } },
-                    ) ?: continue
-                    Log.i("TVMusicLx", "cross-source ${track.onlineSource}->$source '${item.name}/${item.singer}'")
-                    return resolved.url
+                        validate = { url ->
+                            StreamUrlValidator.isUsable(source, url) &&
+                                withContext(Dispatchers.IO) { isPlayable(url) }
+                        },
+                    )
+                    if (resolved != null) {
+                        Log.i("TVMusicLx", "cross-source ${track.onlineSource}->$source '${item.name}/${item.singer}'")
+                        return resolved.url
+                    }
+                    if (source == "wy") {
+                        val id = item.id.toLongOrNull() ?: item.songmid.toLongOrNull()
+                        if (id != null && id > 0) {
+                            val url = "https://music.163.com/song/media/outer/url?id=$id.mp3"
+                            if (StreamUrlValidator.isUsable("wy", url) && withContext(Dispatchers.IO) { isPlayable(url) }) {
+                                return url
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -277,7 +340,12 @@ class AppContainer(context: Context) {
         if (a != b && !a.contains(b) && !b.contains(a)) return false
         val x = normalizeQuery(item.singer)
         val y = normalizeQuery(track.artist)
-        return y.isBlank() || x.isBlank() || x.contains(y) || y.contains(x)
+        if (!(y.isBlank() || x.isBlank() || x.contains(y) || y.contains(x))) return false
+        // 同曲校验：时长偏差过大视为不同版本（Live/剪辑），避免播错歌
+        if (item.duration > 0 && track.durationMs > 0 &&
+            kotlin.math.abs(item.duration - track.durationMs) > 20_000L
+        ) return false
+        return true
     }
 
     private fun normalizeQuery(text: String): String =

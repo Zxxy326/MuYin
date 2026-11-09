@@ -52,11 +52,12 @@ data class PlayerSnapshot(
  */
 class PlaybackController(
     context: Context,
-    private val resolveUrl: suspend (track: DemoTrack, preferredQuality: String?, attempt: Int) -> String?,
+    private val resolveUrl: suspend (track: DemoTrack, preferredQuality: String?, attempt: Int, preferredSource: String?, forceRefresh: Boolean) -> String?,
     private val localPath: (DemoTrack) -> String? = { null },
     private val onTrackStarted: (DemoTrack) -> Unit = {},
     smbFactory: DataSource.Factory? = null,
     private val settingsProvider: () -> AppSettings = { AppSettings() },
+    private val sourcesProvider: () -> List<String> = { emptyList() },
 ) {
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -147,7 +148,7 @@ class PlaybackController(
                             // 换源时优先拿兼容性更好的低码率链接，避免再拿到同款异常容器
                             val retryQuality = if (autoRetryCount == 1) "128k" else "320k"
                             val url = withContext(Dispatchers.IO) {
-                                resolveUrl(track, retryQuality, autoRetryCount)
+                                resolveUrl(track, retryQuality, autoRetryCount, null, true)
                             }
                             if (_state.value.track.id != track.id) return@launch
                             if (!url.isNullOrBlank()) {
@@ -217,14 +218,14 @@ class PlaybackController(
         }
 
         resolveJob = scope.launch {
-            var url = withContext(Dispatchers.IO) { resolveUrl(track, null, 0) }
+            var url = withContext(Dispatchers.IO) { resolveUrl(track, null, 0, null, false) }
             if (url.isNullOrBlank()) {
                 _state.value = _state.value.copy(buffering = true)
                 _errors.tryEmit("音源解析失败，正在自动换源…")
                 while (autoRetryCount < MAX_AUTO_RETRIES && url.isNullOrBlank() && isActive) {
                     autoRetryCount += 1
                     val retryQuality = if (autoRetryCount == 1) "128k" else "320k"
-                    url = withContext(Dispatchers.IO) { resolveUrl(track, retryQuality, autoRetryCount) }
+                    url = withContext(Dispatchers.IO) { resolveUrl(track, retryQuality, autoRetryCount, null, true) }
                 }
             }
             if (_state.value.track.id != track.id) return@launch
@@ -240,13 +241,40 @@ class PlaybackController(
     private fun retryWithFullQuality(track: DemoTrack) {
         resolveJob?.cancel()
         resolveJob = scope.launch {
-            val url = withContext(Dispatchers.IO) { resolveUrl(track, "flac", 0) }
+            val url = withContext(Dispatchers.IO) { resolveUrl(track, "flac", 0, null, true) }
             if (url.isNullOrBlank()) {
                 _state.value = _state.value.copy(isPlaying = false, buffering = false)
                 _errors.tryEmit("只找到试听片段，未找到完整音源")
                 return@launch
             }
             startMedia(track, url)
+        }
+    }
+
+    fun availableSources(): List<String> = sourcesProvider()
+
+    /** 手动「选择音源 / 重新解析」：重解析当前歌曲，保留队列与播放进度。 */
+    fun reresolve(source: String?) {
+        val snapshot = _state.value
+        val track = snapshot.track
+        if (!track.isOnline || track.localUri.isNotBlank() || localFileFor(track) != null) {
+            _errors.tryEmit("本地/演示曲目无需切换音源")
+            return
+        }
+        resolveJob?.cancel()
+        val keepPos = snapshot.positionMs
+        _state.value = snapshot.copy(buffering = true)
+        _errors.tryEmit(if (source == null) "重新解析音源…" else "切换音源：$source…")
+        resolveJob = scope.launch {
+            val url = withContext(Dispatchers.IO) { resolveUrl(track, null, 0, source, true) }
+            if (_state.value.track.id != track.id) return@launch
+            if (url.isNullOrBlank()) {
+                _state.value = _state.value.copy(buffering = false)
+                _errors.tryEmit("该音源不可用，请尝试其它音源")
+                return@launch
+            }
+            startMedia(track, url)
+            if (keepPos > 0) player.seekTo(keepPos)
         }
     }
 
@@ -346,7 +374,7 @@ class PlaybackController(
         if (!next.isOnline) return
         prefetchJob?.cancel()
         prefetchJob = scope.launch(Dispatchers.IO) {
-            runCatching { resolveUrl(next, null, 0) }
+            runCatching { resolveUrl(next, null, 0, null, false) }
         }
     }
 

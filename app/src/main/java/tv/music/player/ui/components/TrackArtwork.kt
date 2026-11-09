@@ -11,7 +11,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import tv.music.player.core.playback.DemoTrack
-import tv.music.player.core.theme.rememberCoverArt
+import tv.music.player.core.theme.rememberTrackCoverArt
 
 @Composable
 fun TrackArtwork(
@@ -20,7 +20,7 @@ fun TrackArtwork(
     corner: Dp = 12.dp,
     circular: Boolean = false,
 ) {
-    val cover = rememberCoverArt(track.artworkUrl)
+    val cover = rememberTrackCoverArt(track)
     Image(
         bitmap = cover.image,
         contentDescription = null,

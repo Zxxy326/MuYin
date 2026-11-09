@@ -35,6 +35,7 @@ import tv.music.player.core.companion.CompanionEvent
 import tv.music.player.core.focus.TvFocusRegistry
 import tv.music.player.core.scale.TvScaleProvider
 import tv.music.player.core.settings.AppSettings
+import tv.music.player.core.theme.LocalTrackPicProvider
 import tv.music.player.core.theme.TvColors
 import tv.music.player.core.theme.TvTheme
 import tv.music.player.core.theme.accentFor
@@ -90,12 +91,7 @@ fun TvMusicApp() {
     }
     val backStackEntry by navController.currentBackStackEntryAsState()
     val route = backStackEntry?.destination?.route
-    val homeGroup = remember { TvFocusRegistry.group("home") }
-    val railBrowsing by remember {
-        derivedStateOf { homeGroup.activeKey?.startsWith("rail:") == true }
-    }
-    val showMiniBar = (route == TvRoute.Home.route && !railBrowsing) ||
-        route == TvRoute.Settings.route ||
+    val showMiniBar = route == TvRoute.Settings.route ||
         route == TvRoute.SettingsGroup.route
 
     TvScaleProvider {
@@ -103,6 +99,7 @@ fun TvMusicApp() {
             CompositionLocalProvider(
                 LocalCapsuleHost provides capsuleHost,
                 LocalActiveRoute provides route,
+                LocalTrackPicProvider provides container::resolvePic,
             ) {
                 Box(Modifier.fillMaxSize().background(TvColors.Background)) {
                     TvNavHost(

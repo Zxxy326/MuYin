@@ -4,6 +4,8 @@ import android.net.Uri
 
 sealed class TvRoute(val route: String) {
     data object Home : TvRoute("home")
+    data object Playlists : TvRoute("playlists")
+    data object Mine : TvRoute("mine")
     data object Search : TvRoute("search")
     data object Player : TvRoute("player")
     data object ChartDetail : TvRoute("chart/{chartId}") {

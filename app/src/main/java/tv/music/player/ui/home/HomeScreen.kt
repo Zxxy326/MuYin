@@ -72,6 +72,7 @@ import tv.music.player.ui.components.ChartCard
 import tv.music.player.ui.components.KeyHintBar
 import tv.music.player.ui.components.Keycap
 import tv.music.player.ui.components.LocalCapsuleHost
+import tv.music.player.ui.components.MainTabBar
 import tv.music.player.ui.components.PosterCard
 import tv.music.player.ui.components.QuickTile
 import tv.music.player.ui.components.SectionHeader
@@ -101,9 +102,7 @@ fun HomeScreen(
     val guessTracks = remember(recent, favorites) { buildGuessTracks(recent, favorites) }
     val guessTrailing = if (recent.isEmpty()) "播放后自动推荐" else "根据最近播放 · 本地算法"
     val charts = Charts.all
-    val greeting = rememberGreeting()
-    val clock = rememberClock()
-    val online = rememberNetworkOnline()
+    val snapshot by playback.state.collectAsStateWithLifecycle()
 
     val railOrder = listOf("continue", "guess", "charts")
     val continueState = rememberLazyListState()
@@ -180,10 +179,17 @@ fun HomeScreen(
 
     fun handleVerticalKey(activeKey: String?, delta: Int): Boolean {
         if (activeKey == null) return false
-        if (activeKey.startsWith("quick:")) {
+        if (activeKey.startsWith("tab:")) {
             if (delta < 0) return false
-            val quickIndex = activeKey.removePrefix("quick:").toIntOrNull() ?: 0
-            moveToRail("continue", quickIndex)
+            group.focus("search")
+            return true
+        }
+        if (activeKey == "search") {
+            if (delta < 0) {
+                group.focus("tab:home")
+                return true
+            }
+            moveToRail("continue", 0)
             return true
         }
         val (railId, index) = parseRailKey(activeKey) ?: return false
@@ -196,7 +202,7 @@ fun HomeScreen(
                     scope.launch {
                         try {
                             listState.scrollToItem(0)
-                            group.focusWhenReady("quick:${index.coerceIn(0, 4)}")
+                            group.focusWhenReady("search")
                         } finally {
                             railMoving = false
                         }
@@ -252,28 +258,21 @@ fun HomeScreen(
                         }
                     }
             ) {
-                HomeHeader(
-                    greeting = greeting,
-                    clock = clock,
-                    online = online,
+                MainTabBar(
+                    active = "home",
                     group = group,
+                    nowPlaying = snapshot.track.title.takeIf { snapshot.track.usesPlayer },
+                    onHome = {},
+                    onPlaylists = { navController.navigate(TvRoute.Playlists.route) { popUpTo(TvRoute.Home.route); launchSingleTop = true } },
+                    onMine = { navController.navigate(TvRoute.Mine.route) { popUpTo(TvRoute.Home.route); launchSingleTop = true } },
+                    onPlayer = { navController.navigate(TvRoute.Player.route) },
                     onSettings = { navController.navigate(TvRoute.Settings.route) },
                     modifier = Modifier.padding(horizontal = 26.dp),
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(12.dp))
                 HomeSearchBar(
                     group = group,
                     onClick = { navController.navigate(TvRoute.Search.route) },
-                    modifier = Modifier.padding(horizontal = 26.dp),
-                )
-                Spacer(Modifier.height(16.dp))
-                QuickRow(
-                    group = group,
-                    onSearch = { navController.navigate(TvRoute.Search.route) },
-                    onFavorites = { navController.navigate(TvRoute.Favorites.route) },
-                    onRecent = { navController.navigate(TvRoute.Recent.route) },
-                    onSources = { navController.navigate(TvRoute.SettingsGroup.of("sources")) },
-                    onLocal = { navController.navigate(TvRoute.LocalHub.route) },
                     modifier = Modifier.padding(horizontal = 26.dp),
                 )
                 Spacer(Modifier.height(12.dp))
@@ -391,7 +390,7 @@ private fun HomeSearchBar(
     modifier: Modifier = Modifier,
 ) {
     TvSurface(
-        modifier = modifier.fillMaxWidth().height(60.dp),
+        modifier = modifier.fillMaxWidth().height(52.dp),
         shape = RoundedCornerShape(32.dp),
         baseColor = TvColors.Surface.copy(alpha = 0.9f),
         focusedScale = 1.015f,
@@ -419,179 +418,6 @@ private fun HomeSearchBar(
     }
 }
 
-@Composable
-private fun HomeHeader(
-    greeting: String,
-    clock: String,
-    online: Boolean,
-    group: TvFocusGroup,
-    onSettings: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val accent = LocalTvAccent.current
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(accent)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("TV MUSIC · M3b2", style = TvType.tracking, color = accent)
-            }
-            Spacer(Modifier.height(6.dp))
-            val prompt = if (greeting == "晚上好") "今晚听点什么？" else "今天想听点什么？"
-            Text("$greeting，$prompt", style = TvType.display, color = TvColors.TextPrimary)
-        }
-        Spacer(Modifier.weight(1f))
-        NetworkPill(online)
-        Spacer(Modifier.width(18.dp))
-        Text(clock, style = TvType.headline, color = TvColors.TextPrimary)
-        Spacer(Modifier.width(18.dp))
-        TvSurface(
-            modifier = Modifier.size(46.dp),
-            shape = CircleShape,
-            baseColor = TvColors.Surface.copy(alpha = 0.72f),
-            focusedScale = 1.1f,
-            glowSize = 12.dp,
-            group = group,
-            focusKey = "settings",
-            onClick = onSettings,
-        ) {
-            TvIcon(
-                icon = Icons.Rounded.Settings,
-                modifier = Modifier.size(22.dp),
-                tint = TvColors.TextPrimary,
-                contentDescription = "设置",
-            )
-        }
-    }
-}
-
-@Composable
-private fun NetworkPill(online: Boolean) {
-    val color = if (online) LocalTvAccent.current else TvColors.TextTertiary
-    Row(
-        Modifier
-            .clip(RoundedCornerShape(50))
-            .background(TvColors.Surface.copy(alpha = 0.72f))
-            .padding(horizontal = 14.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier
-                .size(7.dp)
-                .clip(CircleShape)
-                .background(color)
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(if (online) "网络已连接" else "离线模式", style = TvType.caption, color = color)
-    }
-}
-
-@Composable
-private fun QuickRow(
-    group: TvFocusGroup,
-    onSearch: () -> Unit,
-    onFavorites: () -> Unit,
-    onRecent: () -> Unit,
-    onSources: () -> Unit,
-    onLocal: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        QuickTile(
-            icon = Icons.Rounded.Search,
-            label = "搜索",
-            group = group,
-            focusKey = "quick:0",
-            onClick = onSearch,
-            modifier = Modifier.width(158.dp),
-        )
-        QuickTile(
-            icon = Icons.Rounded.Favorite,
-            label = "我的收藏",
-            group = group,
-            focusKey = "quick:1",
-            onClick = onFavorites,
-            modifier = Modifier.width(158.dp),
-        )
-        QuickTile(
-            icon = Icons.Rounded.History,
-            label = "最近播放",
-            group = group,
-            focusKey = "quick:2",
-            onClick = onRecent,
-            modifier = Modifier.width(158.dp),
-        )
-        QuickTile(
-            icon = Icons.Rounded.Folder,
-            label = "本地音乐",
-            group = group,
-            focusKey = "quick:3",
-            onClick = onLocal,
-            modifier = Modifier.width(158.dp),
-        )
-        QuickTile(
-            icon = Icons.Rounded.Cloud,
-            label = "音源管理",
-            group = group,
-            focusKey = "quick:4",
-            onClick = onSources,
-            modifier = Modifier.width(158.dp),
-        )
-    }
-}
-
-@Composable
-private fun rememberGreeting(): String {
-    val hour = remember { LocalTime.now().hour }
-    return when (hour) {
-        in 5..10 -> "早上好"
-        in 11..13 -> "中午好"
-        in 14..18 -> "下午好"
-        else -> "晚上好"
-    }
-}
-
-@Composable
-private fun rememberClock(): String {
-    val formatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
-    val time by produceState(initialValue = LocalTime.now().format(formatter)) {
-        while (true) {
-            delay(10_000L)
-            value = LocalTime.now().format(formatter)
-        }
-    }
-    return time
-}
-
-@Composable
-private fun rememberNetworkOnline(): Boolean {
-    val context = LocalContext.current
-    var online by remember { mutableStateOf(hasInternet(context)) }
-    DisposableEffect(context) {
-        val manager = context.getSystemService(ConnectivityManager::class.java)
-        val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) {
-                online = true
-            }
-
-            override fun onLost(network: Network) {
-                online = hasInternet(context)
-            }
-        }
-        runCatching { manager?.registerDefaultNetworkCallback(callback) }
-        onDispose { runCatching { manager?.unregisterNetworkCallback(callback) } }
-    }
-    return online
-}
-
 private fun buildGuessTracks(
     recent: List<DemoTrack>,
     favorites: List<DemoTrack>,
@@ -605,11 +431,4 @@ private fun buildGuessTracks(
     val matched = pool.filter { it.artist in artistHits && it.libraryKey() !in recentKeys }
     val fill = DemoCatalog.tracks.filter { it.libraryKey() !in recentKeys }
     return (matched + fill).distinctBy { it.libraryKey() }.take(8)
-}
-
-private fun hasInternet(context: Context): Boolean {
-    val manager = context.getSystemService(ConnectivityManager::class.java) ?: return true
-    val network = manager.activeNetwork ?: return false
-    val capabilities = manager.getNetworkCapabilities(network) ?: return false
-    return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
 }
