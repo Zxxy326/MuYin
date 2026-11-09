@@ -148,7 +148,7 @@ fun ChartCard(
     val accent = LocalTvAccent.current
     val colors = artworkColors(name.hashCode())
     TvSurface(
-        modifier = modifier.width(216.dp).height(112.dp),
+        modifier = modifier.width(200.dp).height(104.dp),
         shape = RoundedCornerShape(16.dp),
         baseColor = Color.Transparent,
         group = group,

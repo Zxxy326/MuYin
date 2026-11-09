@@ -145,6 +145,82 @@ class NeteaseApi {
             }
         }
 
+    /** 网易云推荐歌单：weapi 个性化推荐（无需登录）+ 登录后每日推荐/雷达等，合并去重。 */
+    suspend fun fetchRecommendedPlaylists(cookies: Map<String, String>): List<AccountPlaylist> =
+        withContext(Dispatchers.IO) {
+            val byId = linkedMapOf<String, AccountPlaylist>()
+            fun absorb(array: JSONArray?) {
+                if (array == null) return
+                for (i in 0 until array.length()) {
+                    val item = array.optJSONObject(i) ?: continue
+                    val id = item.optLong("id", 0L)
+                    if (id <= 0L) continue
+                    val name = item.optString("name").trim()
+                    if (name.isBlank()) continue
+                    byId.putIfAbsent(
+                        id.toString(),
+                        AccountPlaylist(
+                            provider = PROVIDER,
+                            id = id.toString(),
+                            name = name,
+                            trackCount = item.optInt("trackCount", 0),
+                            coverUrl = httpsUrl(item.optString("picUrl").ifBlank { item.optString("coverImgUrl") }),
+                        ),
+                    )
+                }
+            }
+            runCatching {
+                val json = postWeapi("personalized", """{"limit":24,"offset":0,"total":true}""", cookies)
+                absorb(json.optJSONArray("result"))
+            }
+            if (cookies.isNotEmpty()) {
+                runCatching {
+                    val json = postWeapi("recommend/resource", "{}", cookies)
+                    absorb(json.optJSONArray("recommend"))
+                }
+            }
+            byId.values.toList()
+        }
+
+    /** 网易云 weapi 加密 POST（AES-CBC 两次 + RSA encSecKey）。 */
+    private fun postWeapi(path: String, json: String, cookies: Map<String, String>): JSONObject {
+        val secret = (1..16).map { "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".random() }.joinToString("")
+        val params = aesEncrypt(aesEncrypt(json, PRESET_KEY), secret)
+        val encSecKey = rsaEncrypt(secret)
+        val body = okhttp3.FormBody.Builder()
+            .add("params", params)
+            .add("encSecKey", encSecKey)
+            .build()
+        val request = Request.Builder()
+            .url("https://music.163.com/weapi/$path")
+            .header("Cookie", buildCookieHeader(cookies))
+            .header("Referer", "https://music.163.com/")
+            .header("User-Agent", UA)
+            .post(body)
+            .build()
+        client.newCall(request).execute().use { resp ->
+            val text = resp.body.string()
+            return runCatching { JSONObject(text) }.getOrElse { throw IOException("网易云返回了无法解析的响应") }
+        }
+    }
+
+    private fun aesEncrypt(text: String, key: String): String {
+        val cipher = javax.crypto.Cipher.getInstance("AES/CBC/PKCS5Padding")
+        cipher.init(
+            javax.crypto.Cipher.ENCRYPT_MODE,
+            javax.crypto.spec.SecretKeySpec(key.toByteArray(Charsets.UTF_8), "AES"),
+            javax.crypto.spec.IvParameterSpec("0102030405060708".toByteArray(Charsets.UTF_8)),
+        )
+        return android.util.Base64.encodeToString(cipher.doFinal(text.toByteArray(Charsets.UTF_8)), android.util.Base64.NO_WRAP)
+    }
+
+    private fun rsaEncrypt(secret: String): String {
+        val hex = secret.reversed().toByteArray(Charsets.UTF_8).joinToString("") { "%02x".format(it) }
+        val bi = java.math.BigInteger(hex, 16)
+        val result = bi.modPow(java.math.BigInteger("010001", 16), java.math.BigInteger(RSA_MODULUS, 16))
+        return result.toString(16).padStart(256, '0')
+    }
+
     suspend fun fetchPlaylistTracks(
         cookies: Map<String, String>,
         playlistId: String,
@@ -283,6 +359,9 @@ class NeteaseApi {
 
     companion object {
         const val PROVIDER = "netease"
+        private const val PRESET_KEY = "0CoJUm6Qyw8W8jud"
+        private const val RSA_MODULUS =
+            "00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7"
         private const val UA =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
                 "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"

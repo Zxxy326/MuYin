@@ -23,10 +23,10 @@ data class ChartDef(
 
 object Charts {
     val all: List<ChartDef> = listOf(
-        ChartDef("tx-26", "QQ 热歌榜", "tx", "26", "QQ 音乐 · 每日更新"),
-        ChartDef("tx-62", "QQ 飙升榜", "tx", "62", "QQ 音乐 · 每日更新"),
         ChartDef("wy-19723756", "网易云飙升榜", "wy", "19723756", "网易云音乐 · 每日更新"),
         ChartDef("wy-3778678", "网易云热歌榜", "wy", "3778678", "网易云音乐 · 每日更新"),
+        ChartDef("tx-26", "QQ 热歌榜", "tx", "26", "QQ 音乐 · 每日更新"),
+        ChartDef("tx-62", "QQ 飙升榜", "tx", "62", "QQ 音乐 · 每日更新"),
     )
 
     fun byId(id: String): ChartDef? = all.firstOrNull { it.id == id }

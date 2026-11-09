@@ -37,6 +37,7 @@ data class AccountUiState(
     val netease: AccountProfile? = null,
     val qq: AccountProfile? = null,
     val playlists: List<AccountPlaylist> = emptyList(),
+    val recommended: List<AccountPlaylist> = emptyList(),
     val loading: Boolean = false,
     val error: String? = null,
     val qr: QrLoginState = QrLoginState.Idle,
@@ -67,6 +68,7 @@ class AccountStore(context: Context) {
     init {
         restore()
         if (neteaseCookies.isNotEmpty() || qqCookies.isNotEmpty()) refresh()
+        refreshRecommended()
     }
 
     fun refresh() {
@@ -251,6 +253,14 @@ class AccountStore(context: Context) {
                 playlistTracks = _state.value.playlistTracks.filterNot { it.key.startsWith("qq:") },
                 message = "已移除 QQ 音乐 Cookie",
             )
+        }
+    }
+
+    fun refreshRecommended() {
+        scope.launch {
+            val list = runCatching { neteaseApi.fetchRecommendedPlaylists(neteaseCookies) }
+                .getOrNull() ?: return@launch
+            if (list.isNotEmpty()) _state.value = _state.value.copy(recommended = list)
         }
     }
 

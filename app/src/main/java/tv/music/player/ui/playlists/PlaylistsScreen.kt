@@ -48,11 +48,17 @@ fun PlaylistsScreen(
     val accountState by account.state.collectAsStateWithLifecycle()
     val snapshot by playback.state.collectAsStateWithLifecycle()
     val playlists = accountState.playlists
+    val recommended = accountState.recommended
     val charts = Charts.all
 
     LaunchedEffect(Unit) {
         account.refresh()
-        val target = if (playlists.isNotEmpty()) "pl:0" else "chart:0"
+        account.refreshRecommended()
+        val target = when {
+            recommended.isNotEmpty() -> "rec:0"
+            playlists.isNotEmpty() -> "pl:0"
+            else -> "chart:0"
+        }
         group.focusWhenReady(target, timeoutMs = 1_500L)
     }
 
@@ -78,6 +84,22 @@ fun PlaylistsScreen(
                 contentPadding = PaddingValues(bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                if (recommended.isNotEmpty()) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SectionHeader(
+                                "网易云推荐",
+                                modifier = Modifier.padding(horizontal = 26.dp),
+                                trailing = "每日推荐 / 雷达等 · 登录更准",
+                            )
+                            TvRail(items = recommended, keyPrefix = "rec", group = group, initialIndex = 0) { _, pl, focusKey ->
+                                PlaylistCard(pl, group, focusKey) {
+                                    navController.navigate(TvRoute.AccountPlaylist.of(pl.provider, pl.id))
+                                }
+                            }
+                        }
+                    }
+                }
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         SectionHeader(
@@ -94,28 +116,8 @@ fun PlaylistsScreen(
                             )
                         } else {
                             TvRail(items = playlists, keyPrefix = "pl", group = group, initialIndex = 0) { _, pl, focusKey ->
-                                TvSurface(
-                                    modifier = Modifier.size(width = 150.dp, height = 190.dp),
-                                    shape = RoundedCornerShape(16.dp),
-                                    baseColor = TvColors.Surface.copy(alpha = 0.6f),
-                                    group = group,
-                                    focusKey = focusKey,
-                                    onClick = { navController.navigate(TvRoute.AccountPlaylist.of(pl.provider, pl.id)) },
-                                ) {
-                                    Column(Modifier.padding(8.dp)) {
-                                        TrackArtwork(
-                                            track = tv.music.player.core.playback.DemoTrack(
-                                                id = pl.id.hashCode(), title = pl.name, artist = pl.provider,
-                                                album = "", durationMs = 0, colorSeed = pl.id.hashCode(),
-                                                coverUrl = pl.coverUrl,
-                                            ),
-                                            modifier = Modifier.fillMaxWidth().height(134.dp),
-                                            corner = 12.dp,
-                                        )
-                                        Spacer(Modifier.height(8.dp))
-                                        Text(pl.name, style = TvType.label, color = TvColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        Text("${pl.trackCount} 首", style = TvType.caption, color = TvColors.TextSecondary, maxLines = 1)
-                                    }
+                                PlaylistCard(pl, group, focusKey) {
+                                    navController.navigate(TvRoute.AccountPlaylist.of(pl.provider, pl.id))
                                 }
                             }
                         }
@@ -134,6 +136,41 @@ fun PlaylistsScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PlaylistCard(
+    pl: tv.music.player.core.account.AccountPlaylist,
+    group: tv.music.player.core.focus.TvFocusGroup,
+    focusKey: String,
+    onClick: () -> Unit,
+) {
+    TvSurface(
+        modifier = Modifier.size(width = 150.dp, height = 190.dp),
+        shape = RoundedCornerShape(16.dp),
+        baseColor = TvColors.Surface.copy(alpha = 0.6f),
+        group = group,
+        focusKey = focusKey,
+        onClick = onClick,
+    ) {
+        Column(Modifier.padding(8.dp)) {
+            TrackArtwork(
+                track = tv.music.player.core.playback.DemoTrack(
+                    id = pl.id.hashCode(), title = pl.name, artist = pl.provider,
+                    album = "", durationMs = 0, colorSeed = pl.id.hashCode(),
+                    coverUrl = pl.coverUrl,
+                ),
+                modifier = Modifier.fillMaxWidth().height(134.dp),
+                corner = 12.dp,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(pl.name, style = TvType.label, color = TvColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                if (pl.trackCount > 0) "${pl.trackCount} 首" else "推荐歌单",
+                style = TvType.caption, color = TvColors.TextSecondary, maxLines = 1,
+            )
         }
     }
 }

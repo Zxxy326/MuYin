@@ -1,8 +1,8 @@
 {
-  "versionCode": 20,
-  "versionName": "0.11.6",
-  "apkUrl": "https://github.com/Zxxy326/TV-Music/releases/download/v0.11.6-m3b2/TV-Music-0.11.6-public.apk",
-  "sha256": "77b81c1f24f41bf5f408024534942636e21fda449691f68ba5db37c238ffe6cb",
+  "versionCode": 21,
+  "versionName": "0.11.7",
+  "apkUrl": "https://github.com/Zxxy326/TV-Music/releases/download/v0.11.7-m3b2/TV-Music-0.11.7-public.apk",
+  "sha256": "b114b6c17bfe68e972d662007923d1da1c8324c4f85305b286df66457cfbdb8b",
   "sizeBytes": 20406041,
-  "notes": "0.11.6：继续听 / 猜你喜欢 / 歌单卡片加载真实歌曲封面（缺封面时按歌名/歌手自动检索），不再显示默认黑胶占位。"
+  "notes": "0.11.7：歌单页新增网易云推荐歌单（每日推荐/雷达等，登录后更准）；热门榜单网易云两榜前置，四个榜单卡片缩小到刚好满屏不溢出。"
 }
