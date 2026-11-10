@@ -23,10 +23,14 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.runtime.Composable
@@ -55,6 +59,8 @@ import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import tv.music.player.core.charts.Charts
 import tv.music.player.core.focus.TvFocusGroup
 import tv.music.player.core.focus.TvSurface
@@ -82,8 +88,6 @@ import tv.music.player.ui.components.TvRail
 import tv.music.player.ui.components.WideCard
 import tv.music.player.ui.navigation.LocalActiveRoute
 import tv.music.player.ui.navigation.TvRoute
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
 
 @Composable
 fun HomeScreen(
@@ -179,18 +183,29 @@ fun HomeScreen(
 
     fun handleVerticalKey(activeKey: String?, delta: Int): Boolean {
         if (activeKey == null) return false
-        if (activeKey.startsWith("tab:")) {
-            if (delta < 0) return false
-            group.focus("search")
+        if (activeKey.startsWith("quick:")) {
+            if (delta < 0) {
+                group.focus("search")
+                return true
+            }
+            val quickIndex = activeKey.removePrefix("quick:").toIntOrNull() ?: 0
+            moveToRail("continue", quickIndex)
             return true
         }
-        if (activeKey == "search") {
+        if (activeKey == "search" || activeKey == "home:nowplaying") {
             if (delta < 0) {
-                group.focus("tab:home")
+                group.focus("home:settings")
                 return true
             }
             moveToRail("continue", 0)
             return true
+        }
+        if (activeKey == "home:settings") {
+            if (delta > 0) {
+                group.focus("search")
+                return true
+            }
+            return false
         }
         val (railId, index) = parseRailKey(activeKey) ?: return false
         val position = railOrder.indexOf(railId)
@@ -258,21 +273,37 @@ fun HomeScreen(
                         }
                     }
             ) {
-                MainTabBar(
-                    active = "home",
+                HomeHeaderRow(
                     group = group,
-                    nowPlaying = snapshot.track.title.takeIf { snapshot.track.usesPlayer },
-                    onHome = {},
-                    onPlaylists = { navController.navigate(TvRoute.Playlists.route) { popUpTo(TvRoute.Home.route); launchSingleTop = true } },
-                    onMine = { navController.navigate(TvRoute.Mine.route) { popUpTo(TvRoute.Home.route); launchSingleTop = true } },
-                    onPlayer = { navController.navigate(TvRoute.Player.route) },
                     onSettings = { navController.navigate(TvRoute.Settings.route) },
                     modifier = Modifier.padding(horizontal = 26.dp),
                 )
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 26.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    HomeSearchBar(
+                        group = group,
+                        onClick = { navController.navigate(TvRoute.Search.route) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    NowPlayingBox(
+                        group = group,
+                        title = snapshot.track.title.takeIf { snapshot.track.usesPlayer },
+                        onClick = { navController.navigate(TvRoute.Player.route) },
+                        modifier = Modifier.width(230.dp),
+                    )
+                }
                 Spacer(Modifier.height(12.dp))
-                HomeSearchBar(
+                HomeQuickRow(
                     group = group,
-                    onClick = { navController.navigate(TvRoute.Search.route) },
+                    onDaily = { navController.navigate(TvRoute.Playlists.route) { popUpTo(TvRoute.Home.route); launchSingleTop = true } },
+                    onFavorites = { navController.navigate(TvRoute.Favorites.route) },
+                    onSquare = { navController.navigate(TvRoute.Playlists.route) { popUpTo(TvRoute.Home.route); launchSingleTop = true } },
+                    onMine = { navController.navigate(TvRoute.Mine.route) { popUpTo(TvRoute.Home.route); launchSingleTop = true } },
+                    onSources = { navController.navigate(TvRoute.SettingsGroup.of("sources")) },
                     modifier = Modifier.padding(horizontal = 26.dp),
                 )
                 Spacer(Modifier.height(12.dp))
@@ -380,6 +411,113 @@ fun HomeScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun HomeHeaderRow(
+    group: TvFocusGroup,
+    onSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val accent = LocalTvAccent.current
+    val greeting = remember {
+        when (LocalTime.now().hour) {
+            in 5..10 -> "早上好"
+            in 11..13 -> "中午好"
+            in 14..18 -> "下午好"
+            else -> "晚上好"
+        }
+    }
+    val clock = rememberClock()
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            "$greeting，${if (greeting == "晚上好") "今晚听点什么？" else "今天想听点什么？"}",
+            style = TvType.headline,
+            color = TvColors.TextPrimary,
+            maxLines = 1,
+            modifier = Modifier.weight(1f),
+        )
+        Text(clock, style = TvType.headline, color = TvColors.TextPrimary)
+        Spacer(Modifier.width(14.dp))
+        TvSurface(
+            modifier = Modifier.size(44.dp),
+            shape = CircleShape,
+            baseColor = TvColors.Surface.copy(alpha = 0.72f),
+            focusedScale = 1.1f,
+            glowSize = 12.dp,
+            group = group,
+            focusKey = "home:settings",
+            onClick = onSettings,
+        ) {
+            TvIcon(Icons.Rounded.Settings, Modifier.size(20.dp), tint = TvColors.TextPrimary, contentDescription = "设置")
+        }
+    }
+}
+
+@Composable
+private fun rememberClock(): String {
+    val formatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
+    val time by produceState(initialValue = LocalTime.now().format(formatter)) {
+        while (true) {
+            delay(10_000L)
+            value = LocalTime.now().format(formatter)
+        }
+    }
+    return time
+}
+
+@Composable
+private fun NowPlayingBox(
+    group: TvFocusGroup,
+    title: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val accent = LocalTvAccent.current
+    TvSurface(
+        modifier = modifier.height(52.dp),
+        shape = RoundedCornerShape(26.dp),
+        baseColor = accent.copy(alpha = 0.16f),
+        focusedScale = 1.03f,
+        glowSize = 12.dp,
+        group = group,
+        focusKey = "home:nowplaying",
+        onClick = onClick,
+    ) {
+        Row(
+            Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TvIcon(Icons.Rounded.MusicNote, Modifier.size(18.dp), tint = accent)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                title?.let { "正在播放 · $it" } ?: "正在播放",
+                style = TvType.label,
+                color = accent,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeQuickRow(
+    group: TvFocusGroup,
+    onDaily: () -> Unit,
+    onFavorites: () -> Unit,
+    onSquare: () -> Unit,
+    onMine: () -> Unit,
+    onSources: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        QuickTile(Icons.Rounded.CalendarMonth, "每日推荐", group, "quick:0", onDaily, Modifier.weight(1f))
+        QuickTile(Icons.Rounded.Favorite, "我的收藏", group, "quick:1", onFavorites, Modifier.weight(1f))
+        QuickTile(Icons.Rounded.LibraryMusic, "歌单广场", group, "quick:2", onSquare, Modifier.weight(1f))
+        QuickTile(Icons.Rounded.Person, "个人界面", group, "quick:3", onMine, Modifier.weight(1f))
+        QuickTile(Icons.Rounded.Cloud, "音源管理", group, "quick:4", onSources, Modifier.weight(1f))
     }
 }
 

@@ -57,7 +57,8 @@ fun AccountPlaylistScreen(
     val group = rememberTvFocusGroup("account-playlist")
     val accent = LocalTvAccent.current
     val state by store.state.collectAsStateWithLifecycle()
-    val playlist = state.playlists.firstOrNull { it.id == playlistId && it.provider == provider }
+    val playlist = (state.playlists + state.square + state.recommended)
+        .firstOrNull { it.id == playlistId && it.provider == provider }
     val activeRoute = LocalActiveRoute.current
     val isActive = activeRoute == TvRoute.AccountPlaylist.route
     val tracks = playlist?.let(store::playlistTracks).orEmpty()

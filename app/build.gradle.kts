@@ -15,8 +15,8 @@ android {
         applicationId = "tv.music.player"
         minSdk = 28
         targetSdk = 36
-        versionCode = providers.gradleProperty("tvmusic.versionCode").orNull?.toInt() ?: 23
-        versionName = providers.gradleProperty("tvmusic.versionName").orNull ?: "0.11.9"
+        versionCode = providers.gradleProperty("tvmusic.versionCode").orNull?.toInt() ?: 24
+        versionName = providers.gradleProperty("tvmusic.versionName").orNull ?: "0.11.10"
         val manifestUrl = providers.gradleProperty("tvmusic.updateManifest")
             .orElse("https://testingcf.jsdelivr.net/gh/Zxxy326/MuYin@main/update.json")
             .get()
