@@ -38,7 +38,7 @@ object CrashLogger {
         val stack = StringWriter().also { throwable.printStackTrace(PrintWriter(it)) }.toString()
         file.writeText(
             buildString {
-                appendLine("TV Music crash report")
+                appendLine("幕音 crash report")
                 appendLine("time: $stamp")
                 appendLine("thread: ${thread.name}")
                 appendLine("device: ${Build.MANUFACTURER} ${Build.MODEL}")

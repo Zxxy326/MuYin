@@ -7,7 +7,7 @@ internal const val COMPANION_PAGE: String = """
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#0b0d12">
-<title>TV Music 遥控器</title>
+<title>幕音遥控器</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:#0b0d12;color:#eef1f7;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
@@ -74,7 +74,7 @@ footer{text-align:center;color:#586074;font-size:11px;line-height:1.7;margin-top
 </div>
 <main id="app">
   <header>
-    <div class="brand"><span class="dot"></span>TV MUSIC<small>手机伴侣</small></div>
+    <div class="brand"><span class="dot"></span>幕音<small>手机伴侣</small></div>
     <div id="conn" class="pill">连接中</div>
   </header>
   <section class="search card">

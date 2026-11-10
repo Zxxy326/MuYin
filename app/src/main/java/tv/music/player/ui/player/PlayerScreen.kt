@@ -66,11 +66,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -162,6 +164,16 @@ fun PlayerScreen(
     onBack: () -> Unit,
 ) {
     val snapshot by playback.state.collectAsStateWithLifecycle()
+    // 逐帧读取播放进度，驱动逐字歌词平滑填充（避免 400ms ticker 造成的卡顿）
+    var framePositionMs by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(snapshot.isPlaying, snapshot.track.id) {
+        if (snapshot.track.usesPlayer && snapshot.isPlaying) {
+            while (true) {
+                withFrameNanos { framePositionMs = playback.player.currentPosition.coerceAtLeast(0L) }
+            }
+        }
+    }
+    val lyricPositionMs = if (snapshot.track.usesPlayer && snapshot.isPlaying) framePositionMs else snapshot.positionMs
     val favorites by library.favorites.collectAsStateWithLifecycle()
     val isFavorite = favorites.any { it.libraryKey() == snapshot.track.libraryKey() }
     val downloadEntries by downloads.entries.collectAsStateWithLifecycle()
@@ -360,13 +372,9 @@ fun PlayerScreen(
     }
 
     fun seekWithLongPress(direction: Int, repeatCount: Int) {
-        if (repeatCount >= 3) {
-            if (!longSeekHandled) {
-                longSeekHandled = true
-                if (direction < 0) playback.previous() else playback.next()
-                capsule.show(if (direction < 0) "上一首" else "下一首")
-            }
-        } else {
+        // 长按左/右 = 快退/快进；短按在 KeyUp 时判定为上一首/下一首
+        if (repeatCount >= 2) {
+            longSeekHandled = true
             playback.seekBy(direction * 10_000L)
         }
     }
@@ -443,8 +451,17 @@ fun PlayerScreen(
                     when {
                         event.type == KeyEventType.KeyUp &&
                             (event.key == Key.DirectionLeft || event.key == Key.DirectionRight) -> {
+                            if (!longSeekHandled) {
+                                if (event.key == Key.DirectionLeft) {
+                                    playback.previous()
+                                    capsule.show("上一首")
+                                } else {
+                                    playback.next()
+                                    capsule.show("下一首")
+                                }
+                            }
                             longSeekHandled = false
-                            false
+                            true
                         }
                         event.type != KeyEventType.KeyDown -> false
                         else -> when (event.key) {
@@ -492,6 +509,7 @@ fun PlayerScreen(
                     settings = settings,
                     style = style,
                     coverImage = cover,
+                    renderPositionMs = lyricPositionMs,
                 )
             }
         }
@@ -543,8 +561,8 @@ fun PlayerScreen(
                 KeyHintBar(
                     hints = listOf(
                         "OK" to "播放 / 暂停",
-                        "← →" to "快退 / 快进 10s",
-                        "长按 ← →" to "上一首 / 下一首",
+                        "← →" to "上一首 / 下一首",
+                        "长按 ← →" to "快退 / 快进",
                         "↑" to "控制条",
                         "↓" to "播放队列",
                         "MENU" to "歌词设置",
@@ -835,6 +853,7 @@ private fun LyricsView(
     settings: AppSettings,
     style: LyricStyle,
     coverImage: tv.music.player.core.theme.CoverArt,
+    renderPositionMs: Long,
 ) {
     val scale = settings.lyricSize.scale
     if (style == LyricStyle.CLOCK) {
@@ -868,14 +887,14 @@ private fun LyricsView(
             when (style) {
                 LyricStyle.WAVE -> WaveLyricsEffect(
                     lyrics = lyrics,
-                    positionMs = snapshot.positionMs,
+                    positionMs = renderPositionMs,
                     offsetMs = settings.lyricOffsetMs,
                     track = snapshot.track,
                     coverImage = coverImage,
                 )
                 LyricStyle.SIMPLE -> SimpleLyricsEffect(
                     lyrics = lyrics,
-                    positionMs = snapshot.positionMs,
+                    positionMs = renderPositionMs,
                     offsetMs = settings.lyricOffsetMs,
                     track = snapshot.track,
                     coverImage = coverImage,
@@ -1398,6 +1417,19 @@ private fun BounceLine(
                 label = "bounce-$index",
             )
             val shape = RoundedCornerShape(8.dp)
+            val wordFrac = when {
+                !sung -> 0f
+                !active -> 1f
+                word.durationMs <= 0L -> 1f
+                else -> ((t - word.timeMs).toFloat() / word.durationMs).coerceIn(0f, 1f)
+            }
+            val dim = Color.White.copy(alpha = 0.3f)
+            val fill = Brush.horizontalGradient(
+                0f to accent,
+                wordFrac to accent,
+                wordFrac to dim,
+                1f to dim,
+            )
             Box(
                 Modifier
                     .graphicsLayer {
@@ -1412,16 +1444,13 @@ private fun BounceLine(
             ) {
                 Text(
                     text = word.text,
-                    style = TextStyle(fontFamily = TvFonts.family, 
+                    style = TextStyle(
+                        fontFamily = TvFonts.family,
                         fontSize = (36f * scale).sp,
                         lineHeight = (42f * scale).sp,
                         fontWeight = FontWeight.Bold,
+                        brush = fill,
                     ),
-                    color = when {
-                        active -> accent
-                        sung -> Color.White.copy(alpha = 0.92f)
-                        else -> Color.White.copy(alpha = 0.3f)
-                    },
                 )
             }
         }

@@ -2,8 +2,10 @@ package tv.music.player.core.focus
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -69,13 +72,30 @@ fun TvSurface(
 
     val scale by animateFloatAsState(
         targetValue = if (focused) focusedScale else 1f,
-        animationSpec = tween(if (animations) 120 else 0, easing = FastOutSlowInEasing),
+        animationSpec = if (animations) {
+            spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMediumLow)
+        } else {
+            tween(0)
+        },
         label = "focus-scale",
     )
     val glow by animateDpAsState(
         targetValue = if (focused) glowSize else 0.dp,
-        animationSpec = tween(if (animations) 160 else 0),
+        animationSpec = if (animations) {
+            spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium)
+        } else {
+            tween(0)
+        },
         label = "focus-glow",
+    )
+    val elevation by animateDpAsState(
+        targetValue = if (focused) 14.dp else 0.dp,
+        animationSpec = if (animations) {
+            spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium)
+        } else {
+            tween(0)
+        },
+        label = "focus-elevation",
     )
     val borderWidth by animateDpAsState(
         targetValue = if (focused) focusedBorderWidth else 1.dp,
@@ -122,6 +142,7 @@ fun TvSurface(
                 scaleX = scale
                 scaleY = scale
             }
+            .shadow(elevation, shape, clip = false)
             .drawBehind {
                 if (glowPx <= 0f) return@drawBehind
                 val outline = shape.createOutline(size, layoutDirection, this)

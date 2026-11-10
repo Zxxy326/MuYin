@@ -72,6 +72,7 @@ fun QuickTile(
                 .fillMaxSize()
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             TvIcon(icon, Modifier.size(22.dp), tint = LocalTvAccent.current)
             Spacer(Modifier.height(6.dp))
@@ -103,8 +104,9 @@ fun ActionChip(
     ) {
         Row(
             Modifier
-                .fillMaxHeight()
+                .fillMaxSize()
                 .padding(horizontal = 18.dp),
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (icon != null) {

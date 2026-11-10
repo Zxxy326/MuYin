@@ -1,4 +1,4 @@
-# TV Music
+# 幕音
 
 一款面向 Android TV / 电视盒子的在线音乐播放器，用 **Kotlin + Jetpack Compose for TV + Media3** 构建，全流程遥控器操作。
 

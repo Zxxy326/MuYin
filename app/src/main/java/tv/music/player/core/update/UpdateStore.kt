@@ -205,7 +205,7 @@ class UpdateStore(context: Context) {
                     CHANNEL_ID,
                     "应用更新",
                     NotificationManager.IMPORTANCE_DEFAULT,
-                ).apply { description = "发现 TV Music 新版本时提醒" }
+                ).apply { description = "发现幕音新版本时提醒" }
             )
         }
         val intent = Intent(appContext, MainActivity::class.java)
@@ -225,7 +225,7 @@ class UpdateStore(context: Context) {
             NOTIFICATION_ID,
             builder
                 .setSmallIcon(android.R.drawable.stat_sys_download_done)
-                .setContentTitle("TV Music 有新版本 ${info.versionName}")
+                .setContentTitle("幕音有新版本 ${info.versionName}")
                 .setContentText("打开应用 → 设置 → 更新，下载并安装")
                 .setContentIntent(pending)
                 .setAutoCancel(true)

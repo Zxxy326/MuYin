@@ -1,7 +1,9 @@
 package tv.music.player.ui.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -42,11 +44,11 @@ fun MainTabBar(
 ) {
     val accent = LocalTvAccent.current
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        ActionChip(label = "首页", group = group, focusKey = "tab:home", primary = active == "home", onClick = onHome)
+        ActionChip(label = "首页", group = group, focusKey = "tab:home", primary = active == "home", onClick = onHome, modifier = Modifier.width(96.dp))
         Spacer(Modifier.width(10.dp))
-        ActionChip(label = "歌单", group = group, focusKey = "tab:playlists", primary = active == "playlists", onClick = onPlaylists)
+        ActionChip(label = "歌单", group = group, focusKey = "tab:playlists", primary = active == "playlists", onClick = onPlaylists, modifier = Modifier.width(96.dp))
         Spacer(Modifier.width(10.dp))
-        ActionChip(label = "我的", group = group, focusKey = "tab:mine", primary = active == "mine", onClick = onMine)
+        ActionChip(label = "我的", group = group, focusKey = "tab:mine", primary = active == "mine", onClick = onMine, modifier = Modifier.width(96.dp))
         Spacer(Modifier.weight(1f))
         TvSurface(
             modifier = Modifier.height(42.dp).widthIn(max = 340.dp),
@@ -59,7 +61,8 @@ fun MainTabBar(
             onClick = onPlayer,
         ) {
             Row(
-                Modifier.padding(horizontal = 16.dp),
+                Modifier.fillMaxHeight().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 TvIcon(Icons.Rounded.MusicNote, Modifier.size(18.dp), tint = accent)
