@@ -538,12 +538,13 @@ class UpdateStore(context: Context) {
         val configured = BuildConfig.UPDATE_MANIFEST_URL.trim()
         if (configured.isBlank()) return emptyList()
         val urls = linkedSetOf(configured)
-        if (configured.contains("Zxxy326/TV-Music")) {
+        if (configured.contains("Zxxy326/TV-Music") || configured.contains("Zxxy326/MuYin")) {
+            urls += "https://raw.githubusercontent.com/Zxxy326/MuYin/main/update.json"
             urls += "https://raw.githubusercontent.com/Zxxy326/TV-Music/main/update.json"
-            urls += "https://gcore.jsdelivr.net/gh/Zxxy326/TV-Music@main/update.json"
-            urls += "https://fastly.jsdelivr.net/gh/Zxxy326/TV-Music@main/update.json"
-            urls += "https://testingcf.jsdelivr.net/gh/Zxxy326/TV-Music@main/update.json"
-            urls += "https://cdn.jsdelivr.net/gh/Zxxy326/TV-Music@main/update.json"
+            urls += "https://gcore.jsdelivr.net/gh/Zxxy326/MuYin@main/update.json"
+            urls += "https://fastly.jsdelivr.net/gh/Zxxy326/MuYin@main/update.json"
+            urls += "https://testingcf.jsdelivr.net/gh/Zxxy326/MuYin@main/update.json"
+            urls += "https://cdn.jsdelivr.net/gh/Zxxy326/MuYin@main/update.json"
         }
         return urls.filter { isAllowedUrl(it) }
     }

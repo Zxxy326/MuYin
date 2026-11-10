@@ -1,7 +1,7 @@
 {
   "versionCode": 23,
   "versionName": "0.11.9",
-  "apkUrl": "https://github.com/Zxxy326/TV-Music/releases/download/v0.11.9-m3b2/TV-Music-0.11.9-public.apk",
+  "apkUrl": "https://github.com/Zxxy326/MuYin/releases/download/v0.11.9-m3b2/TV-Music-0.11.9-public.apk",
   "sha256": "fa2c14bce4ca806029698ecfa1178d926bb666c5483ffe0063c80adaca0c5243",
   "sizeBytes": 20422425,
   "notes": "0.11.9：更名为「幕音」；类 Apple TV 弹性焦点动画（弹簧缩放+抬升阴影）；播放页短按左/右=上一首/下一首、长按=快退/快进；逐字歌词改为逐帧平滑填充（唱完一个字再到下一个字）；按钮内容居中、视觉对齐。"

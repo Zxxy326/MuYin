@@ -18,7 +18,7 @@ android {
         versionCode = providers.gradleProperty("tvmusic.versionCode").orNull?.toInt() ?: 23
         versionName = providers.gradleProperty("tvmusic.versionName").orNull ?: "0.11.9"
         val manifestUrl = providers.gradleProperty("tvmusic.updateManifest")
-            .orElse("https://testingcf.jsdelivr.net/gh/Zxxy326/TV-Music@main/update.json")
+            .orElse("https://testingcf.jsdelivr.net/gh/Zxxy326/MuYin@main/update.json")
             .get()
         buildConfigField("String", "UPDATE_MANIFEST_URL", "\"${manifestUrl.replace("\"", "\\\"")}\"")
     }
