@@ -30,6 +30,7 @@ import tv.music.player.core.playback.PlaybackController
 import tv.music.player.core.theme.TvColors
 import tv.music.player.core.theme.TvDimens
 import tv.music.player.core.theme.TvType
+import tv.music.player.ui.components.ActionChip
 import tv.music.player.ui.components.ChartCard
 import tv.music.player.ui.components.MainTabBar
 import tv.music.player.ui.components.SectionHeader
@@ -37,6 +38,11 @@ import tv.music.player.ui.components.TrackArtwork
 import tv.music.player.ui.components.TvBackdrop
 import tv.music.player.ui.components.TvRail
 import tv.music.player.ui.navigation.TvRoute
+
+private val SQUARE_CATS = listOf(
+    "华语", "流行", "摇滚", "民谣", "电子", "说唱", "轻音乐", "爵士", "古典", "古风",
+    "影视原声", "ACG", "运动", "学习", "治愈", "夜晚", "驾车", "旅行", "经典", "翻唱",
+)
 
 @Composable
 fun PlaylistsScreen(
@@ -49,11 +55,15 @@ fun PlaylistsScreen(
     val snapshot by playback.state.collectAsStateWithLifecycle()
     val playlists = accountState.playlists
     val recommended = accountState.recommended
+    val square = accountState.square
+    val squareCat = accountState.squareCat
+    val squareLoading = accountState.squareLoading
     val charts = Charts.all
 
     LaunchedEffect(Unit) {
         account.refresh()
         account.refreshRecommended()
+        if (square.isEmpty()) account.loadSquare(squareCat)
         val target = when {
             recommended.isNotEmpty() -> "rec:0"
             playlists.isNotEmpty() -> "pl:0"
@@ -93,6 +103,41 @@ fun PlaylistsScreen(
                                 trailing = "每日推荐 / 雷达等 · 登录更准",
                             )
                             TvRail(items = recommended, keyPrefix = "rec", group = group, initialIndex = 0) { _, pl, focusKey ->
+                                PlaylistCard(pl, group, focusKey) {
+                                    navController.navigate(TvRoute.AccountPlaylist.of(pl.provider, pl.id))
+                                }
+                            }
+                        }
+                    }
+                }
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SectionHeader(
+                            "歌单广场",
+                            modifier = Modifier.padding(horizontal = 26.dp),
+                            trailing = "网易云 · 分类热门",
+                        )
+                        TvRail(items = SQUARE_CATS, keyPrefix = "cat", group = group, initialIndex = 0) { _, cat, focusKey ->
+                            ActionChip(
+                                label = cat,
+                                group = group,
+                                focusKey = focusKey,
+                                primary = cat == squareCat,
+                                onClick = { account.loadSquare(cat) },
+                            )
+                        }
+                        when {
+                            squareLoading -> Text(
+                                "正在加载「$squareCat」歌单…",
+                                style = TvType.caption, color = TvColors.TextTertiary,
+                                modifier = Modifier.padding(horizontal = 26.dp),
+                            )
+                            square.isEmpty() -> Text(
+                                "「$squareCat」暂无歌单，换个分类试试。",
+                                style = TvType.caption, color = TvColors.TextTertiary,
+                                modifier = Modifier.padding(horizontal = 26.dp),
+                            )
+                            else -> TvRail(items = square, keyPrefix = "sq", group = group, initialIndex = 0) { _, pl, focusKey ->
                                 PlaylistCard(pl, group, focusKey) {
                                     navController.navigate(TvRoute.AccountPlaylist.of(pl.provider, pl.id))
                                 }

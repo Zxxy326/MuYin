@@ -38,6 +38,9 @@ data class AccountUiState(
     val qq: AccountProfile? = null,
     val playlists: List<AccountPlaylist> = emptyList(),
     val recommended: List<AccountPlaylist> = emptyList(),
+    val square: List<AccountPlaylist> = emptyList(),
+    val squareCat: String = "华语",
+    val squareLoading: Boolean = false,
     val loading: Boolean = false,
     val error: String? = null,
     val qr: QrLoginState = QrLoginState.Idle,
@@ -261,6 +264,16 @@ class AccountStore(context: Context) {
             val list = runCatching { neteaseApi.fetchRecommendedPlaylists(neteaseCookies) }
                 .getOrNull() ?: return@launch
             if (list.isNotEmpty()) _state.value = _state.value.copy(recommended = list)
+        }
+    }
+
+    fun loadSquare(category: String) {
+        if (_state.value.squareLoading && _state.value.squareCat == category) return
+        _state.value = _state.value.copy(squareCat = category, squareLoading = true)
+        scope.launch {
+            val list = runCatching { neteaseApi.fetchCategoryPlaylists(neteaseCookies, category) }
+                .getOrNull() ?: emptyList()
+            _state.value = _state.value.copy(square = list, squareLoading = false)
         }
     }
 

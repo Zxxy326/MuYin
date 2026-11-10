@@ -182,6 +182,52 @@ class NeteaseApi {
             byId.values.toList()
         }
 
+    /** 网易云歌单广场：按分类拉取热门歌单（weapi 优先，GET 兜底）。 */
+    suspend fun fetchCategoryPlaylists(
+        cookies: Map<String, String>,
+        category: String,
+        offset: Int = 0,
+        limit: Int = 24,
+    ): List<AccountPlaylist> = withContext(Dispatchers.IO) {
+        val payload = JSONObject()
+            .put("cat", category)
+            .put("limit", limit)
+            .put("offset", offset)
+            .put("order", "hot")
+            .put("total", true)
+        val json = runCatching { postWeapi("playlist/list", payload.toString(), cookies) }
+            .recoverCatching {
+                getJson(
+                    "https://music.163.com/api/playlist/list".toHttpUrl().newBuilder()
+                        .addQueryParameter("cat", category)
+                        .addQueryParameter("limit", limit.toString())
+                        .addQueryParameter("offset", offset.toString())
+                        .addQueryParameter("order", "hot")
+                        .build(),
+                    cookies,
+                )
+            }.getOrNull() ?: return@withContext emptyList()
+        val array = json.optJSONArray("playlists") ?: return@withContext emptyList()
+        buildList {
+            for (i in 0 until array.length()) {
+                val item = array.optJSONObject(i) ?: continue
+                val id = item.optLong("id", 0L)
+                if (id <= 0L) continue
+                val name = item.optString("name").trim()
+                if (name.isBlank()) continue
+                add(
+                    AccountPlaylist(
+                        provider = PROVIDER,
+                        id = id.toString(),
+                        name = name,
+                        trackCount = item.optInt("trackCount", 0),
+                        coverUrl = httpsUrl(item.optString("coverImgUrl")),
+                    ),
+                )
+            }
+        }
+    }
+
     /** 网易云 weapi 加密 POST（AES-CBC 两次 + RSA encSecKey）。 */
     private fun postWeapi(path: String, json: String, cookies: Map<String, String>): JSONObject {
         val secret = (1..16).map { "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".random() }.joinToString("")

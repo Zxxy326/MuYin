@@ -1,8 +1,8 @@
 {
-  "versionCode": 21,
-  "versionName": "0.11.7",
-  "apkUrl": "https://github.com/Zxxy326/TV-Music/releases/download/v0.11.7-m3b2/TV-Music-0.11.7-public.apk",
-  "sha256": "b114b6c17bfe68e972d662007923d1da1c8324c4f85305b286df66457cfbdb8b",
-  "sizeBytes": 20406041,
-  "notes": "0.11.7：歌单页新增网易云推荐歌单（每日推荐/雷达等，登录后更准）；热门榜单网易云两榜前置，四个榜单卡片缩小到刚好满屏不溢出。"
+  "versionCode": 22,
+  "versionName": "0.11.8",
+  "apkUrl": "https://github.com/Zxxy326/TV-Music/releases/download/v0.11.8-m3b2/TV-Music-0.11.8-public.apk",
+  "sha256": "5d4ab7994964e4106d5cbd020c2b23f29f9ae7a8b4cb6113a7ad8aac71d0819e",
+  "sizeBytes": 20422425,
+  "notes": "0.11.8：歌单页新增「歌单广场」，网易云各分类（华语/流行/摇滚/民谣/电子/说唱/轻音乐/爵士/古典/古风等）热门歌单，带真实封面，点击整单播放，无需登录。"
 }
