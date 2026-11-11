@@ -182,6 +182,21 @@ class NeteaseApi {
             byId.values.toList()
         }
 
+    /** 网易云每日推荐歌曲（需登录）：weapi discovery/recommend/songs，歌曲在顶层 recommend 数组。 */
+    suspend fun fetchDailyRecommendSongs(cookies: Map<String, String>): List<DemoTrack> =
+        withContext(Dispatchers.IO) {
+            if (cookies.isEmpty()) return@withContext emptyList()
+            val json = postWeapi("discovery/recommend/songs", """{"limit":30}""", cookies)
+            val array = json.optJSONArray("recommend") ?: return@withContext emptyList()
+            val result = mutableListOf<DemoTrack>()
+            val seen = mutableSetOf<Long>()
+            for (i in 0 until array.length()) {
+                val track = songToTrack(array.optJSONObject(i) ?: continue) ?: continue
+                if (seen.add(track.onlineSongNumericId)) result += track
+            }
+            result
+        }
+
     /** 网易云歌单广场：按分类拉取热门歌单（weapi 优先，GET 兜底）。 */
     suspend fun fetchCategoryPlaylists(
         cookies: Map<String, String>,

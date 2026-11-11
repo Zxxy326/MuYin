@@ -38,6 +38,9 @@ data class AccountUiState(
     val qq: AccountProfile? = null,
     val playlists: List<AccountPlaylist> = emptyList(),
     val recommended: List<AccountPlaylist> = emptyList(),
+    val dailySongs: List<DemoTrack> = emptyList(),
+    val dailyLoading: Boolean = false,
+    val dailyError: String? = null,
     val square: List<AccountPlaylist> = emptyList(),
     val squareCat: String = "华语",
     val squareLoading: Boolean = false,
@@ -171,6 +174,7 @@ class AccountStore(context: Context) {
                                 message = "已登录网易云：${profile.nickname}",
                             )
                             refreshNeteasePlaylists(profile)
+                            loadDailyRecommend(force = true)
                             delay(2_500L)
                             if (_state.value.qr is QrLoginState.Success) {
                                 _state.value = _state.value.copy(qr = QrLoginState.Idle)
@@ -242,6 +246,9 @@ class AccountStore(context: Context) {
                 qr = QrLoginState.Idle,
                 playlists = _state.value.playlists.filterNot { it.provider == provider },
                 playlistTracks = _state.value.playlistTracks.filterNot { it.key.startsWith("netease:") },
+                dailySongs = emptyList(),
+                dailyLoading = false,
+                dailyError = null,
                 message = "已退出网易云",
             )
             savePlaylists(_state.value.playlists)
@@ -264,6 +271,30 @@ class AccountStore(context: Context) {
             val list = runCatching { neteaseApi.fetchRecommendedPlaylists(neteaseCookies) }
                 .getOrNull() ?: return@launch
             if (list.isNotEmpty()) _state.value = _state.value.copy(recommended = list)
+        }
+    }
+
+    /** 每日推荐歌曲：仅登录后可用。force=true 时忽略缓存重新拉取（每天内容会变）。 */
+    fun loadDailyRecommend(force: Boolean = false) {
+        if (neteaseCookies.isEmpty()) {
+            _state.value = _state.value.copy(dailySongs = emptyList(), dailyLoading = false, dailyError = null)
+            return
+        }
+        if (!force && (_state.value.dailyLoading || _state.value.dailySongs.isNotEmpty())) return
+        _state.value = _state.value.copy(dailyLoading = true, dailyError = null)
+        scope.launch {
+            runCatching { neteaseApi.fetchDailyRecommendSongs(neteaseCookies) }
+                .onSuccess { songs ->
+                    _state.value = _state.value.copy(
+                        dailyLoading = false,
+                        dailySongs = songs,
+                        dailyError = if (songs.isEmpty()) "今天还没有推荐歌曲，稍后再试。" else null,
+                    )
+                }
+                .onFailure {
+                    Log.w(TAG, "load daily recommend failed: ${it.message}")
+                    _state.value = _state.value.copy(dailyLoading = false, dailyError = friendly(it))
+                }
         }
     }
 

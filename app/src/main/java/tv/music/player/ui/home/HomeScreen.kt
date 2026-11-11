@@ -291,7 +291,7 @@ fun HomeScreen(
                 Spacer(Modifier.height(12.dp))
                 HomeQuickRow(
                     group = group,
-                    onDaily = { navController.navigate(TvRoute.Playlists.route) { popUpTo(TvRoute.Home.route); launchSingleTop = true } },
+                    onDaily = { navController.navigate(TvRoute.DailyRecommend.route) },
                     onFavorites = { navController.navigate(TvRoute.Favorites.route) },
                     onSquare = { navController.navigate(TvRoute.Playlists.route) { popUpTo(TvRoute.Home.route); launchSingleTop = true } },
                     onMine = { navController.navigate(TvRoute.Mine.route) { popUpTo(TvRoute.Home.route); launchSingleTop = true } },

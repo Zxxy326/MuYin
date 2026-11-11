@@ -88,7 +88,7 @@ internal fun effectPalette(accent: Color): EffectPalette = EffectPalette(
     deep = lerp(accent, Color.Black, 0.90f),
     wave = lerp(accent, Color.White, 0.12f),
     waveIn = lerp(accent, Color.White, 0.46f),
-    watermark = accent.copy(alpha = 0.075f),
+    watermark = accent.copy(alpha = 0.20f),
 )
 
 private fun lineAt(lyrics: Lyrics, position: Long): LyricLine? {
@@ -241,8 +241,10 @@ internal fun WaveLyricsEffect(
                 bass = SpectrumTap.bass
                 mid = SpectrumTap.mid
                 high = SpectrumTap.high
-                val speed = (0.045f + 0.45f * bass + 0.10f * mid + 0.30f * pulse)
-                    .coerceAtMost(0.60f)
+                // 0.18 圈/秒是最低频率保底：静音 / 暂停时也保持呼吸，绝不停死；
+                // 人声 mid 权重最大，涟漪跟着咬字起伏，bass 只负责加重鼓点。
+                val speed = (0.18f + 0.26f * bass + 0.42f * mid + 0.22f * pulse)
+                    .coerceAtMost(0.85f)
                 phase = (phase + dt * speed) % 1f
             }
         }
@@ -253,12 +255,10 @@ internal fun WaveLyricsEffect(
         val h = constraints.maxHeight.toFloat()
         Box(
             Modifier.fillMaxSize().background(
-                Brush.radialGradient(
-                    0f to palette.glow,
-                    0.55f to palette.base,
+                Brush.verticalGradient(
+                    0f to lerp(accent, Color(0xFF080B14), 0.60f),
+                    0.62f to lerp(accent, Color(0xFF080B14), 0.66f),
                     1f to palette.deep,
-                    center = Offset(w * 0.5f, h * 0.5f),
-                    radius = maxOf(w, h) * 0.62f,
                 ),
             )
         )
@@ -268,19 +268,6 @@ internal fun WaveLyricsEffect(
         ) {
             drawWaveField(phase, bass, mid, high, palette)
         }
-        Box(
-            Modifier.align(Alignment.Center)
-                .fillMaxWidth(0.80f)
-                .fillMaxHeight(0.90f)
-                .background(
-                    Brush.radialGradient(
-                        0f to Color.Black.copy(alpha = 0.26f),
-                        0.46f to Color.Black.copy(alpha = 0.14f),
-                        0.74f to Color.Transparent,
-                        1f to Color.Transparent,
-                    )
-                )
-        )
         val line = lineAt(lyrics, position)
         val text = line?.text?.takeIf { it.isNotBlank() } ?: track.title
         WaveWatermark(text, w, h, palette)
@@ -307,7 +294,7 @@ private fun BoxScope.WaveWatermark(
             color = palette.watermark,
             fontFamily = TvFonts.family,
         ),
-        modifier = Modifier.align(Alignment.Center).blur(14.dp),
+        modifier = Modifier.align(Alignment.Center).blur(9.dp),
     )
 }
 
@@ -385,7 +372,8 @@ private fun DrawScope.drawWaveField(
     val h = size.height
     val band = w * 0.075f * (1f + 0.60f * mid)
     val maxR = w * 0.40f
-    val loud = 0.45f + 0.75f * bass
+    // 亮度保底 0.60：静音段涟漪依旧可见，人声 / 低频一来再增亮。
+    val loud = 0.60f + 0.55f * bass + 0.30f * mid
     val extra = ((bass - 0.55f) / 0.35f).coerceIn(0f, 1f)
     val sources = listOf(Offset(-w * 0.02f, h * 0.5f), Offset(w * 1.02f, h * 0.5f))
     for (center in sources) {

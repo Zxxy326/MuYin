@@ -1,8 +1,8 @@
 {
-  "versionCode": 25,
-  "versionName": "0.11.11",
-  "apkUrl": "https://github.com/Zxxy326/MuYin/releases/download/v0.11.11/MuYin-0.11.11-public.apk",
-  "sha256": "175d61736803340bf1bca8a99fb5947dc73589e459a054b333158fc6178e5de6",
-  "sizeBytes": 20422425,
-  "notes": "0.11.11：修复首页五个快捷入口（每日推荐/我的收藏/歌单广场/个人界面/音源管理）遥控无法到达的问题，搜索框下键进入快捷行、列表上键返回快捷行并记住位置；修复播放页上键唤出控制条的布局与按键异常（标题/队列/音源正常显示，控制条内↑↓切换上下行、↓收起）。"
+  "versionCode": 26,
+  "versionName": "0.11.12",
+  "apkUrl": "https://github.com/Zxxy326/MuYin/releases/download/v0.11.12/MuYin-0.11.12-public.apk",
+  "sha256": "3a44abd7f551aa1e5841622e6acfc900289562215a640347fdca8bc0759a1416",
+  "sizeBytes": 20438809,
+  "notes": "0.11.12：每日推荐改为读取登录网易云账号当天的推荐歌曲（discovery/recommend/songs），支持播放全部/刷新，未登录时引导去登录，不再跳转歌单广场；动感涟漪跟随人声波动并加最低频率保底，静音/暂停也保持呼吸不停死；歌词衬底改为每句首字/词放大置于歌词下一层、减轻模糊，并去掉衬底周围的圆形光晕。"
 }

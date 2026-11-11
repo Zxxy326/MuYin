@@ -33,6 +33,7 @@ import tv.music.player.core.settings.SettingsRepository
 import tv.music.player.core.update.UpdateStore
 import tv.music.player.ui.account.AccountPlaylistScreen
 import tv.music.player.ui.account.AccountScreen
+import tv.music.player.ui.account.DailyRecommendScreen
 import tv.music.player.ui.charts.ChartDetailScreen
 import tv.music.player.ui.home.HomeScreen
 import tv.music.player.ui.library.DownloadsScreen
@@ -204,6 +205,13 @@ fun TvNavHost(
                 playback = playback,
                 provider = entry.arguments?.getString("provider").orEmpty(),
                 playlistId = entry.arguments?.getString("id").orEmpty(),
+                navController = navController,
+            )
+        }
+        composable(TvRoute.DailyRecommend.route) {
+            DailyRecommendScreen(
+                store = account,
+                playback = playback,
                 navController = navController,
             )
         }
