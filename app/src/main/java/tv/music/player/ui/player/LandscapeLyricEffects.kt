@@ -76,7 +76,6 @@ import kotlin.math.exp
 internal data class EffectPalette(
     val glow: Color,
     val base: Color,
-    val deep: Color,
     val wave: Color,
     val waveIn: Color,
     val watermark: Color,
@@ -85,7 +84,6 @@ internal data class EffectPalette(
 internal fun effectPalette(accent: Color): EffectPalette = EffectPalette(
     glow = accent,
     base = lerp(accent, Color(0xFF080B14), 0.72f),
-    deep = lerp(accent, Color.Black, 0.90f),
     wave = lerp(accent, Color.White, 0.12f),
     waveIn = lerp(accent, Color.White, 0.46f),
     watermark = accent.copy(alpha = 0.20f),
@@ -140,7 +138,8 @@ private fun tokenSweepBrush(
     sungColor: Color,
     dimColor: Color,
 ): Brush {
-    if (line == null || line.words.isEmpty()) return SolidColor(sungColor)
+    if (line == null) return SolidColor(sungColor)
+    // 没有逐字时间轴（LRC 行级歌词）时按整行时长匀速扫过，保证卡拉OK效果不缺失。
     val total = tokens.sumOf { it.length }.coerceAtLeast(1)
     val progress = effectSweep(line, position, durationMs)
     var before = 0
@@ -154,8 +153,8 @@ private fun tokenSweepBrush(
         local >= 1f -> SolidColor(sungColor)
         else -> Brush.horizontalGradient(
             0f to sungColor,
-            local to sungColor,
-            (local + 0.35f).coerceAtMost(1f) to dimColor,
+            (local - 0.04f).coerceAtLeast(0f) to sungColor,
+            (local + 0.08f).coerceAtMost(1f) to dimColor,
             1f to dimColor,
         )
     }
@@ -256,9 +255,8 @@ internal fun WaveLyricsEffect(
         Box(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
-                    0f to lerp(accent, Color(0xFF080B14), 0.60f),
-                    0.62f to lerp(accent, Color(0xFF080B14), 0.66f),
-                    1f to palette.deep,
+                    0f to lerp(accent, Color(0xFF080B14), 0.58f),
+                    1f to lerp(accent, Color(0xFF080B14), 0.68f),
                 ),
             )
         )
@@ -286,6 +284,8 @@ private fun BoxScope.WaveWatermark(
     if (mark.isEmpty()) return
     val density = LocalDensity.current
     val sizePx = minOf(h * 0.95f, w * 0.34f / mark.length * 1.05f)
+    // 模糊半径随字号缩放：固定 9.dp 在笔画密的字（那/繁）上会把字缝糊成一团。
+    val blurDp = with(density) { (sizePx * 0.010f).toDp() }.coerceIn(1.dp, 4.dp)
     BasicText(
         text = mark,
         style = TextStyle(
@@ -294,7 +294,7 @@ private fun BoxScope.WaveWatermark(
             color = palette.watermark,
             fontFamily = TvFonts.family,
         ),
-        modifier = Modifier.align(Alignment.Center).blur(9.dp),
+        modifier = Modifier.align(Alignment.Center).blur(blurDp),
     )
 }
 
