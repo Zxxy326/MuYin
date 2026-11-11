@@ -224,8 +224,8 @@ fun PlayerScreen(
                 group.focusWhenReady(key, timeoutMs = 1_200L)
             }
             controlsVisible -> {
-                delay(90)
-                group.focus("controls:play")
+                delay(60)
+                group.focusWhenReady("controls:play", timeoutMs = 1_200L)
             }
             else -> {
                 delay(60)
@@ -445,8 +445,31 @@ fun PlayerScreen(
                             else -> false
                         }
                     }
-                } else if (controlsVisible || queueVisible) {
+                } else if (queueVisible) {
                     false
+                } else if (controlsVisible) {
+                    if (event.type != KeyEventType.KeyDown) {
+                        false
+                    } else {
+                        val active = group.activeKey.orEmpty()
+                        val topRow = active == "controls:queue" || active == "controls:source"
+                        when (event.key) {
+                            Key.DirectionUp -> {
+                                if (!topRow) group.focus("controls:queue")
+                                true
+                            }
+                            Key.DirectionDown -> {
+                                if (topRow) group.focus("controls:play") else controlsVisible = false
+                                true
+                            }
+                            Key.Menu -> {
+                                controlsVisible = false
+                                openLyricsPanel()
+                                true
+                            }
+                            else -> false
+                        }
+                    }
                 } else {
                     when {
                         event.type == KeyEventType.KeyUp &&
@@ -589,12 +612,7 @@ fun PlayerScreen(
                 onToggleFavorite = ::toggleFavorite,
                 onDownload = ::handleDownload,
                 onOpenQueue = { queueVisible = true },
-                onOpenLyrics = {
-                    controlsVisible = false
-                    openLyricsPanel()
-                },
                 onOpenSource = { openSourcePanel() },
-                onClose = { controlsVisible = false },
             )
         }
 
@@ -1985,9 +2003,7 @@ private fun ControlsPanel(
     onToggleFavorite: () -> Unit,
     onDownload: () -> Unit,
     onOpenQueue: () -> Unit,
-    onOpenLyrics: () -> Unit,
     onOpenSource: () -> Unit,
-    onClose: () -> Unit,
 ) {
     TvSurface(
         modifier = Modifier.fillMaxWidth(),
@@ -1995,32 +2011,6 @@ private fun ControlsPanel(
         baseColor = TvColors.Surface.copy(alpha = 0.95f),
         focusedScale = 1.0f,
         glowSize = 0.dp,
-        onKeyEvent = { event ->
-            if (event.type != KeyEventType.KeyDown) {
-                false
-            } else {
-                when (event.key) {
-                    Key.DirectionUp -> {
-                        val active = group.activeKey.orEmpty()
-                        if (active == "controls:queue" || active == "controls:source") {
-                            onClose()
-                        } else {
-                            group.focus("controls:queue")
-                        }
-                        true
-                    }
-                    Key.DirectionDown -> {
-                        onClose()
-                        true
-                    }
-                    Key.Menu -> {
-                        onOpenLyrics()
-                        true
-                    }
-                    else -> false
-                }
-            }
-        },
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 26.dp, vertical = 18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2149,7 +2139,7 @@ private fun ControlsPanel(
             }
             Spacer(Modifier.height(6.dp))
             Text(
-                "返回 / ↓ 收起控制条 · 方向键在控制条内移动",
+                "↑↓ 切换上下行 · ←→ 移动 · 返回 / ↓ 收起控制条",
                 style = TvType.caption,
                 color = TvColors.TextTertiary,
                 modifier = Modifier.fillMaxWidth(),

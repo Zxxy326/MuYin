@@ -1,8 +1,8 @@
 {
-  "versionCode": 24,
-  "versionName": "0.11.10",
-  "apkUrl": "https://github.com/Zxxy326/MuYin/releases/download/v0.11.10-m3b2/TV-Music-0.11.10-public.apk",
-  "sha256": "fd066fa4a69477a721bfd3fb4ee731042ccb359725747e29528694f760b5b7cb",
+  "versionCode": 25,
+  "versionName": "0.11.11",
+  "apkUrl": "https://github.com/Zxxy326/MuYin/releases/download/v0.11.11/MuYin-0.11.11-public.apk",
+  "sha256": "175d61736803340bf1bca8a99fb5947dc73589e459a054b333158fc6178e5de6",
   "sizeBytes": 20422425,
-  "notes": "0.11.10：首页按新布局重构（问候+时钟、搜索框+正在播放、每日推荐/我的收藏/歌单广场/个人界面/音源管理五入口）；修复歌单广场点进去提示歌单不存在的问题（现可正常打开整单播放）。"
+  "notes": "0.11.11：修复首页五个快捷入口（每日推荐/我的收藏/歌单广场/个人界面/音源管理）遥控无法到达的问题，搜索框下键进入快捷行、列表上键返回快捷行并记住位置；修复播放页上键唤出控制条的布局与按键异常（标题/队列/音源正常显示，控制条内↑↓切换上下行、↓收起）。"
 }

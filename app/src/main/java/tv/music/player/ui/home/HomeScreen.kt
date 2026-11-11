@@ -114,6 +114,7 @@ fun HomeScreen(
     val chartsState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     var railMoving by remember { mutableStateOf(false) }
+    var quickIndex by remember { mutableStateOf(0) }
 
     fun railIndex(prefix: String): Int {
         val key = group.lastFocusedKey ?: return 0
@@ -184,12 +185,13 @@ fun HomeScreen(
     fun handleVerticalKey(activeKey: String?, delta: Int): Boolean {
         if (activeKey == null) return false
         if (activeKey.startsWith("quick:")) {
+            val qi = activeKey.removePrefix("quick:").toIntOrNull() ?: 0
+            quickIndex = qi
             if (delta < 0) {
                 group.focus("search")
                 return true
             }
-            val quickIndex = activeKey.removePrefix("quick:").toIntOrNull() ?: 0
-            moveToRail("continue", quickIndex)
+            moveToRail("continue", qi)
             return true
         }
         if (activeKey == "search" || activeKey == "home:nowplaying") {
@@ -197,7 +199,7 @@ fun HomeScreen(
                 group.focus("home:settings")
                 return true
             }
-            moveToRail("continue", 0)
+            group.focus("quick:$quickIndex")
             return true
         }
         if (activeKey == "home:settings") {
@@ -212,17 +214,7 @@ fun HomeScreen(
         val nextId = railOrder.getOrNull(position + delta)
         if (nextId == null) {
             if (delta < 0) {
-                if (!railMoving) {
-                    railMoving = true
-                    scope.launch {
-                        try {
-                            listState.scrollToItem(0)
-                            group.focusWhenReady("search")
-                        } finally {
-                            railMoving = false
-                        }
-                    }
-                }
+                group.focus("quick:$quickIndex")
             }
             return true
         }

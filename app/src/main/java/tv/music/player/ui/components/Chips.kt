@@ -104,7 +104,7 @@ fun ActionChip(
     ) {
         Row(
             Modifier
-                .fillMaxSize()
+                .fillMaxHeight()
                 .padding(horizontal = 18.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
