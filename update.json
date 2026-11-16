@@ -1,8 +1,8 @@
 {
-  "versionCode": 26,
-  "versionName": "0.11.12",
-  "apkUrl": "https://github.com/Zxxy326/MuYin/releases/download/v0.11.12/MuYin-0.11.12-public.apk",
-  "sha256": "5042b94d19c753131a07bddb2cba25b46e73c482ff24933902e3f468f4142e03",
-  "sizeBytes": 20438809,
-  "notes": "0.11.12：每日推荐改为读取登录网易云账号当天的推荐歌曲（discovery/recommend/songs），支持播放全部/刷新，未登录时引导去登录，不再跳转歌单广场；动感涟漪跟随人声波动并加最低频率保底，静音/暂停也保持呼吸不停死；歌词衬底改为每句首字/词放大置于歌词下一层，模糊随字号自适应，笔画密的字不再糊成一团，并去掉衬底圆形光晕和底部黑色过渡；补齐无逐字时间轴歌词的卡拉OK逐字扫光。"
+  "versionCode": 27,
+  "versionName": "0.11.13",
+  "apkUrl": "https://github.com/Zxxy326/MuYin/releases/download/v0.11.13/MuYin-0.11.13-public.apk",
+  "sha256": "ef10eec7e013ba3636298e5b6ba1d02bb73a60ca1ecf091cd819b7bf4e588cd3",
+  "sizeBytes": 20471577,
+  "notes": "0.11.13：主界面改为一体式胶囊玻璃顶栏——左侧账号头像与幕音标题，中间首页/搜索/歌单/榜单/更多五个模块，右侧时间与设置；焦点在顶栏左右移动时下方内容原地切换，不再跳转页面。首页重做为继续聆听大卡与猜你喜欢列表；歌单页改用同一套 16dp 栅格与 12dp 圆角，焦点移动自动滚到可视区；榜单焦点切榜即时换榜并可一键播放全部。迷你播放条保持原样式并加白色焦点环；内容区按返回键回到顶栏。"
 }

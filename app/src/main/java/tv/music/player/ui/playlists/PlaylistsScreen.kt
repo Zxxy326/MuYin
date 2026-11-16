@@ -49,6 +49,7 @@ fun PlaylistsScreen(
     account: AccountStore,
     playback: PlaybackController,
     navController: NavHostController,
+    embedded: Boolean = false,
 ) {
     val group = rememberTvFocusGroup("playlists")
     val accountState by account.state.collectAsStateWithLifecycle()
@@ -59,6 +60,9 @@ fun PlaylistsScreen(
     val squareCat = accountState.squareCat
     val squareLoading = accountState.squareLoading
     val charts = Charts.all
+    val gutter = if (embedded) 0.dp else 26.dp
+    val railGap = if (embedded) 12.dp else 16.dp
+    val railPadding = if (embedded) PaddingValues(vertical = 8.dp) else PaddingValues(vertical = 26.dp, horizontal = 26.dp)
 
     LaunchedEffect(Unit) {
         account.refresh()
@@ -69,15 +73,18 @@ fun PlaylistsScreen(
             playlists.isNotEmpty() -> "pl:0"
             else -> "chart:0"
         }
-        group.focusWhenReady(target, timeoutMs = 1_500L)
+        if (!embedded) group.focusWhenReady(target, timeoutMs = 1_500L)
     }
 
     Box(Modifier.fillMaxSize()) {
-        TvBackdrop()
+        if (!embedded) TvBackdrop()
         Column(
-            Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = TvDimens.SafeVertical)
+            Modifier.fillMaxSize().then(
+                if (embedded) Modifier
+                else Modifier.padding(horizontal = 22.dp, vertical = TvDimens.SafeVertical)
+            )
         ) {
-            MainTabBar(
+            if (!embedded) MainTabBar(
                 active = "playlists",
                 group = group,
                 nowPlaying = snapshot.track.title.takeIf { snapshot.track.usesPlayer },
@@ -88,7 +95,7 @@ fun PlaylistsScreen(
                 onSettings = { navController.navigate(TvRoute.Settings.route) },
                 modifier = Modifier.padding(horizontal = 26.dp),
             )
-            Spacer(Modifier.height(14.dp))
+            if (!embedded) Spacer(Modifier.height(14.dp))
             LazyColumn(
                 Modifier.fillMaxWidth().weight(1f),
                 contentPadding = PaddingValues(bottom = 8.dp),
@@ -99,10 +106,10 @@ fun PlaylistsScreen(
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             SectionHeader(
                                 "网易云推荐",
-                                modifier = Modifier.padding(horizontal = 26.dp),
+                                modifier = Modifier.padding(horizontal = gutter),
                                 trailing = "每日推荐 / 雷达等 · 登录更准",
                             )
-                            TvRail(items = recommended, keyPrefix = "rec", group = group, initialIndex = 0) { _, pl, focusKey ->
+                            TvRail(items = recommended, keyPrefix = "rec", group = group, initialIndex = 0, spacing = railGap, contentPadding = railPadding) { _, pl, focusKey ->
                                 PlaylistCard(pl, group, focusKey) {
                                     navController.navigate(TvRoute.AccountPlaylist.of(pl.provider, pl.id))
                                 }
@@ -114,10 +121,10 @@ fun PlaylistsScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         SectionHeader(
                             "歌单广场",
-                            modifier = Modifier.padding(horizontal = 26.dp),
+                            modifier = Modifier.padding(horizontal = gutter),
                             trailing = "网易云 · 分类热门",
                         )
-                        TvRail(items = SQUARE_CATS, keyPrefix = "cat", group = group, initialIndex = 0) { _, cat, focusKey ->
+                        TvRail(items = SQUARE_CATS, keyPrefix = "cat", group = group, initialIndex = 0, spacing = railGap, contentPadding = railPadding) { _, cat, focusKey ->
                             ActionChip(
                                 label = cat,
                                 group = group,
@@ -130,14 +137,14 @@ fun PlaylistsScreen(
                             squareLoading -> Text(
                                 "正在加载「$squareCat」歌单…",
                                 style = TvType.caption, color = TvColors.TextTertiary,
-                                modifier = Modifier.padding(horizontal = 26.dp),
+                                modifier = Modifier.padding(horizontal = gutter),
                             )
                             square.isEmpty() -> Text(
                                 "「$squareCat」暂无歌单，换个分类试试。",
                                 style = TvType.caption, color = TvColors.TextTertiary,
-                                modifier = Modifier.padding(horizontal = 26.dp),
+                                modifier = Modifier.padding(horizontal = gutter),
                             )
-                            else -> TvRail(items = square, keyPrefix = "sq", group = group, initialIndex = 0) { _, pl, focusKey ->
+                            else -> TvRail(items = square, keyPrefix = "sq", group = group, initialIndex = 0, spacing = railGap, contentPadding = railPadding) { _, pl, focusKey ->
                                 PlaylistCard(pl, group, focusKey) {
                                     navController.navigate(TvRoute.AccountPlaylist.of(pl.provider, pl.id))
                                 }
@@ -149,7 +156,7 @@ fun PlaylistsScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         SectionHeader(
                             "我的歌单",
-                            modifier = Modifier.padding(horizontal = 26.dp),
+                            modifier = Modifier.padding(horizontal = gutter),
                             trailing = if (playlists.isEmpty()) "登录账号后同步 · 见「我的」" else "${playlists.size} 个",
                         )
                         if (playlists.isEmpty()) {
@@ -157,10 +164,10 @@ fun PlaylistsScreen(
                                 "还没有歌单。到「我的 → 账号」登录网易云 / QQ 后自动同步。",
                                 style = TvType.caption,
                                 color = TvColors.TextTertiary,
-                                modifier = Modifier.padding(horizontal = 26.dp),
+                                modifier = Modifier.padding(horizontal = gutter),
                             )
                         } else {
-                            TvRail(items = playlists, keyPrefix = "pl", group = group, initialIndex = 0) { _, pl, focusKey ->
+                            TvRail(items = playlists, keyPrefix = "pl", group = group, initialIndex = 0, spacing = railGap, contentPadding = railPadding) { _, pl, focusKey ->
                                 PlaylistCard(pl, group, focusKey) {
                                     navController.navigate(TvRoute.AccountPlaylist.of(pl.provider, pl.id))
                                 }
@@ -170,8 +177,8 @@ fun PlaylistsScreen(
                 }
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SectionHeader("热门榜单", modifier = Modifier.padding(horizontal = 26.dp), trailing = "QQ / 网易云 · 每日更新")
-                        TvRail(items = charts, keyPrefix = "chart", group = group, initialIndex = 0) { index, chart, focusKey ->
+                        SectionHeader("热门榜单", modifier = Modifier.padding(horizontal = gutter), trailing = "QQ / 网易云 · 每日更新")
+                        TvRail(items = charts, keyPrefix = "chart", group = group, initialIndex = 0, spacing = railGap, contentPadding = railPadding) { index, chart, focusKey ->
                             ChartCard(
                                 name = chart.name, subtitle = chart.subtitle, index = index,
                                 group = group, focusKey = focusKey,
@@ -194,7 +201,7 @@ private fun PlaylistCard(
 ) {
     TvSurface(
         modifier = Modifier.size(width = 150.dp, height = 190.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         baseColor = TvColors.Surface.copy(alpha = 0.6f),
         group = group,
         focusKey = focusKey,
@@ -208,7 +215,7 @@ private fun PlaylistCard(
                     coverUrl = pl.coverUrl,
                 ),
                 modifier = Modifier.fillMaxWidth().height(134.dp),
-                corner = 12.dp,
+                corner = 8.dp,
             )
             Spacer(Modifier.height(8.dp))
             Text(pl.name, style = TvType.label, color = TvColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)

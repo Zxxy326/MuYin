@@ -35,7 +35,7 @@ import tv.music.player.ui.account.AccountPlaylistScreen
 import tv.music.player.ui.account.AccountScreen
 import tv.music.player.ui.account.DailyRecommendScreen
 import tv.music.player.ui.charts.ChartDetailScreen
-import tv.music.player.ui.home.HomeScreen
+import tv.music.player.ui.shell.MainShell
 import tv.music.player.ui.library.DownloadsScreen
 import tv.music.player.ui.local.DeviceMusicScreen
 import tv.music.player.ui.local.LocalHubScreen
@@ -82,9 +82,16 @@ fun TvNavHost(
         popExitTransition = { fadeOut(tween(120)) },
     ) {
         composable(TvRoute.Home.route) {
-            HomeScreen(
+            MainShell(
                 playback = playback,
                 library = library,
+                account = account,
+                lyricsRepository = lyricsRepository,
+                lyricOffsetMs = settings.lyricOffsetMs,
+                onlineSearch = onlineSearch,
+                searchHistory = searchHistory,
+                companionBridge = companionBridge,
+                charts = charts,
                 navController = navController,
             )
         }

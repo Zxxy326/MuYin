@@ -263,6 +263,8 @@ private fun MiniControl(
         baseColor = if (primary) accent.copy(alpha = 0.92f) else TvColors.SurfaceHigh.copy(alpha = 0.72f),
         focusedScale = 1.14f,
         glowSize = 10.dp,
+        focusedBorderColor = if (primary) Color.White.copy(alpha = 0.9f) else null,
+        focusedGlowColor = if (primary) Color.White.copy(alpha = 0.4f) else null,
         group = group,
         focusKey = focusKey,
         onClick = onClick,

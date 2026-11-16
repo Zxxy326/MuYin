@@ -94,6 +94,7 @@ fun SearchScreen(
     searchHistory: SearchHistoryStore,
     companionBridge: CompanionBridge,
     navController: NavHostController,
+    embedded: Boolean = false,
 ) {
     val group = rememberTvFocusGroup("search")
     val capsule = LocalCapsuleHost.current
@@ -326,35 +327,37 @@ fun SearchScreen(
                 }
             }
     ) {
-        TvBackdrop()
-        TvSafeArea {
+        if (!embedded) TvBackdrop()
+        TvSafeArea(fullBleed = embedded) {
             Column(Modifier.fillMaxSize()) {
-                ScreenHeader(
-                    title = "搜索",
-                    subtitle = if (pinyinMode) {
-                        "拼音九宫格 · 全拼或首字母 · QQ 音乐在线搜索"
-                    } else {
-                        "数字九宫格 · 数字键直接输入 · QQ 音乐在线搜索"
-                    },
-                    group = group,
-                    onBack = { navController.popBackStack() },
-                    trailing = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Keycap("MENU")
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                when {
-                                    results != null -> "歌曲操作"
-                                    pinyinMode -> "拼音输入"
-                                    else -> "数字输入"
-                                },
-                                style = TvType.caption,
-                                color = TvColors.TextTertiary,
-                            )
-                        }
-                    },
-                )
-                Spacer(Modifier.height(18.dp))
+                if (!embedded) {
+                    ScreenHeader(
+                        title = "搜索",
+                        subtitle = if (pinyinMode) {
+                            "拼音九宫格 · 全拼或首字母 · QQ 音乐在线搜索"
+                        } else {
+                            "数字九宫格 · 数字键直接输入 · QQ 音乐在线搜索"
+                        },
+                        group = group,
+                        onBack = { navController.popBackStack() },
+                        trailing = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Keycap("MENU")
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    when {
+                                        results != null -> "歌曲操作"
+                                        pinyinMode -> "拼音输入"
+                                        else -> "数字输入"
+                                    },
+                                    style = TvType.caption,
+                                    color = TvColors.TextTertiary,
+                                )
+                            }
+                        },
+                    )
+                    Spacer(Modifier.height(18.dp))
+                }
                 Row(Modifier.weight(1f)) {
                     Column(
                         Modifier.width(460.dp).fillMaxHeight(),

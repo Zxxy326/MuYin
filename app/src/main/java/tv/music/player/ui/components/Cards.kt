@@ -149,7 +149,7 @@ fun ChartCard(
     val colors = artworkColors(name.hashCode())
     TvSurface(
         modifier = modifier.width(200.dp).height(104.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         baseColor = Color.Transparent,
         group = group,
         focusKey = focusKey,

@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import tv.music.player.core.focus.TvFocusGroup
 
@@ -19,6 +20,8 @@ fun <T> TvRail(
     initialIndex: Int,
     modifier: Modifier = Modifier,
     state: LazyListState? = null,
+    spacing: Dp = 16.dp,
+    contentPadding: PaddingValues = PaddingValues(vertical = 26.dp, horizontal = 26.dp),
     content: @Composable (index: Int, item: T, focusKey: String) -> Unit,
 ) {
     val fallbackState = rememberLazyListState(
@@ -28,8 +31,8 @@ fun <T> TvRail(
     LazyRow(
         state = listState,
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(vertical = 26.dp, horizontal = 26.dp),
+        horizontalArrangement = Arrangement.spacedBy(spacing),
+        contentPadding = contentPadding,
     ) {
         itemsIndexed(items) { index, item ->
             content(index, item, "$keyPrefix:$index")
