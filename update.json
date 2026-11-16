@@ -1,8 +1,8 @@
 {
-  "versionCode": 28,
-  "versionName": "0.11.14",
-  "apkUrl": "https://github.com/Zxxy326/MuYin/releases/download/v0.11.14/MuYin-0.11.14-public.apk",
-  "sha256": "ae5b6cec063f1dd5aa4e8c6f6e1c2ca12f2f0b0cd798f2be7e68f9c7620e82b9",
-  "sizeBytes": 20471577,
-  "notes": "0.11.14：UI 全面重做为 Midnight Stage 电影感深色语言。近黑底 + 封面主色氛围光、发丝边框、16dp 卡片圆角、白色焦点环 + 主色光晕；顶栏改为 52dp 悬浮胶囊（品牌 / 五模块 / 时间星期 + 设置，设置键直达设置页）；首页改为沉浸式 hero + 横向专辑轨道；歌单广场改无底盒封面卡与白色选中分类；榜单改编辑式榜单选择器、曲目带时长与一键播放；更多页改为账号面板 + 2×2 工具卡；搜索键盘铺满、迷你条新增播放进度线与待播放状态；设置页与所有二级页头统一为新版式。"
+  "versionCode": 29,
+  "versionName": "0.11.15",
+  "apkUrl": "https://github.com/Zxxy326/MuYin/releases/download/v0.11.15/MuYin-0.11.15-public.apk",
+  "sha256": "7b13b4e809418333d3379b3a9ec87a8aa5f338c2cd614255c519a224c7f84302",
+  "sizeBytes": 20511634,
+  "notes": "0.11.15：顶栏改为全透明，右侧换成时间与实时天气（Open-Meteo 数据 + GeoNames 中国城市表，CC BY 4.0）；移除底部播放条，首页改为全屏海报 Hero，正在播放时直接显示歌曲与当前歌词，右侧新增上一首 / 下一首 / 收藏 / 展开，未播放时显示开始播放。歌词加载：新增网易云精确 ID 直连、缩短音源内嵌歌词超时、失败自动重试与下一首歌词预取，播放时间线刷新提升到 120ms，并修正 QRC 逐字时间轴与行时长。"
 }

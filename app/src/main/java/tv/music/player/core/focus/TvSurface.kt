@@ -55,6 +55,7 @@ fun TvSurface(
     glowSize: Dp = 16.dp,
     focusedBorderColor: Color? = null,
     focusedGlowColor: Color? = null,
+    borderColor: Color = TvColors.Divider,
     showBorder: Boolean = true,
     enabled: Boolean = true,
     group: TvFocusGroup? = null,
@@ -105,8 +106,8 @@ fun TvSurface(
     val ringColor = focusedBorderColor ?: Color.White.copy(alpha = 0.92f)
     val glowColor = focusedGlowColor ?: accent
     val glowPx = with(LocalDensity.current) { glow.toPx() }
-    val borderColor by animateColorAsState(
-        targetValue = if (focused) ringColor else TvColors.Divider,
+    val resolvedBorderColor by animateColorAsState(
+        targetValue = if (focused) ringColor else borderColor,
         animationSpec = tween(if (animations) 160 else 0),
         label = "focus-color",
     )
@@ -177,7 +178,7 @@ fun TvSurface(
             }
             .clip(shape)
             .background(baseColor)
-            .then(if (showBorder) Modifier.border(borderWidth, borderColor, shape) else Modifier)
+            .then(if (showBorder) Modifier.border(borderWidth, resolvedBorderColor, shape) else Modifier)
             .then(focusModifier)
             .then(keyModifier)
             .then(interactionModifier),

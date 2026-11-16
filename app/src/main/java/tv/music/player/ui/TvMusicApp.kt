@@ -91,8 +91,6 @@ fun TvMusicApp() {
     }
     val backStackEntry by navController.currentBackStackEntryAsState()
     val route = backStackEntry?.destination?.route
-    val showMiniBar = route == TvRoute.Settings.route ||
-        route == TvRoute.SettingsGroup.route
 
     TvScaleProvider {
         TvTheme(accent = accent, animationsEnabled = settings.animationsEnabled) {
@@ -123,34 +121,8 @@ fun TvMusicApp() {
                         lxEngine = container.lxEngine,
                         lxFileStore = container.lxFileStore,
                         lyricsRepository = container.lyrics,
+                        weather = container.weather,
                     )
-
-                    if (showMiniBar) {
-                        Box(
-                            Modifier
-                                .align(Alignment.BottomCenter)
-                                .fillMaxWidth()
-                                .height(180.dp)
-                                .background(
-                                    Brush.verticalGradient(
-                                        listOf(Color.Transparent, TvColors.Background.copy(alpha = 0.92f))
-                                    )
-                                )
-                        )
-                        MiniPlayerBar(
-                            playback = container.playback,
-                            lyricsRepository = container.lyrics,
-                            library = container.library,
-                            offsetMs = settings.lyricOffsetMs,
-                            onOpenPlayer = {
-                                navController.navigate(TvRoute.Player.route) { launchSingleTop = true }
-                            },
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .windowInsetsPadding(WindowInsets.navigationBars)
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                        )
-                    }
 
                     CapsuleHost(
                         Modifier

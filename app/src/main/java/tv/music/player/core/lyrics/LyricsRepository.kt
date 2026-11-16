@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.LruCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import tv.music.player.core.playback.DemoCatalog
 import tv.music.player.core.playback.DemoTrack
 import tv.music.player.core.search.OnlineSearchApi
@@ -11,6 +12,7 @@ import tv.music.player.core.search.OnlineSearchApi
 class LyricsRepository(
     private val context: Context? = null,
     private val api: QqLyricsApi = QqLyricsApi(),
+    private val neteaseApi: NeteaseLyricsApi = NeteaseLyricsApi(),
     private val diskCache: LyricsDiskCache? = null,
     private val matchStore: LyricsMatchStore? = null,
     private val searchApi: OnlineSearchApi? = null,
@@ -53,7 +55,10 @@ class LyricsRepository(
                     return@withContext LyricsState.Ready(cached)
                 }
             }
-            val source = runCatching { sourceLyricsProvider.invoke(track) }.getOrNull()
+            val sourceTimeoutMs = if (track.onlineSource == "tx" || track.onlineSource == "wy") 800L else 1_800L
+            val source = withTimeoutOrNull(sourceTimeoutMs) {
+                runCatching { sourceLyricsProvider.invoke(track) }.getOrNull()
+            }
             if (source != null) {
                 val parsed = LrcParser.parse(source.lrc, source.translation, source.romanization)
                 when {
@@ -69,9 +74,11 @@ class LyricsRepository(
         }
 
         val isQqTrack = track.onlineSource == "tx"
+        val neteaseId = track.onlineSongId.toLongOrNull().takeIf { track.onlineSource == "wy" }
         val fetchKey = when {
             matched != null -> matched.songMid
             isQqTrack -> songmid
+            neteaseId != null -> "wy:$songmid"
             else -> "match:${track.onlineSource}:$songmid"
         }
         if (!forceRefresh) {
@@ -85,6 +92,7 @@ class LyricsRepository(
             val lyrics = when {
                 matched != null -> api.fetch(matched.songMid, matched.songId)
                 isQqTrack -> api.fetch(songmid, track.onlineSongNumericId)
+                neteaseId != null -> neteaseApi.fetch(neteaseId)
                 else -> loadOnlineMatch(track)?.copy(sourceLabel = "QQ 音乐 · 匹配")
             }
             when {
@@ -108,9 +116,9 @@ class LyricsRepository(
         val artist = track.artist.trim()
         if (title.isBlank()) return null
         val keyword = listOf(title, artist).filter { it.isNotBlank() }.joinToString(" ")
-        val result = runCatching { search.search(keyword, 1, 8) }
-            .onFailure { android.util.Log.w("TVMusicLyrics", "match search failed: ${it.message}") }
-            .getOrNull() ?: return null
+        val result = withTimeoutOrNull(5_000L) {
+            search.search(keyword, 1, 8)
+        } ?: throw IllegalStateException("歌词匹配超时")
         val localTitle = normalize(title)
         val localArtist = normalize(artist)
         val candidate = result.list.firstOrNull { item ->
@@ -129,7 +137,7 @@ class LyricsRepository(
             "match '$keyword' results=${result.list.size} candidate=${candidate?.title}/${candidate?.artist} mid=${candidate?.songmid}",
         )
         if (candidate == null) return null
-        val lyrics = runCatching { api.fetch(candidate.songmid, candidate.songId) }.getOrNull() ?: return null
+        val lyrics = api.fetch(candidate.songmid, candidate.songId) ?: return null
         if (lyrics.instrumental || lyrics.lines.isEmpty()) return null
         return lyrics
     }

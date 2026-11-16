@@ -43,6 +43,7 @@ import tv.music.player.core.smb.SmbConfigStore
 import tv.music.player.core.smb.SmbDataSource
 import tv.music.player.core.smb.SmbRepository
 import tv.music.player.core.update.UpdateStore
+import tv.music.player.core.weather.WeatherRepository
 import tv.music.player.core.settings.lxQuality
 import androidx.media3.datasource.DataSource
 import java.io.File
@@ -57,6 +58,7 @@ class AppContainer(context: Context) {
 
     val lxFileStore = LxFileStore(appContext)
     val lxEngine = LxJsEngine(lxFileStore)
+    val weather = WeatherRepository(appContext)
     val onlineSearch = OnlineSearchApi()
     val charts = ChartRepository()
     val searchHistory = SearchHistoryStore(appContext)

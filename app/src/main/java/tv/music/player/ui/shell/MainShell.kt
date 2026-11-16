@@ -21,16 +21,18 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.AcUnit
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.FlashOn
+import androidx.compose.material.icons.rounded.Grain
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,8 +50,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
@@ -68,7 +72,6 @@ import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import tv.music.player.core.account.AccountStore
@@ -90,7 +93,9 @@ import tv.music.player.core.theme.LocalTvAccent
 import tv.music.player.core.theme.TvColors
 import tv.music.player.core.theme.TvFonts
 import tv.music.player.core.theme.rememberCoverArt
-import tv.music.player.ui.components.MiniPlayerBar
+import tv.music.player.core.weather.WeatherKind
+import tv.music.player.core.weather.WeatherRepository
+import tv.music.player.core.weather.WeatherSnapshot
 import tv.music.player.ui.components.TrackArtwork
 import tv.music.player.ui.components.TvBackdrop
 import tv.music.player.ui.components.TvIcon
@@ -99,21 +104,10 @@ import tv.music.player.ui.navigation.TvRoute
 import tv.music.player.ui.playlists.PlaylistsScreen
 import tv.music.player.ui.search.SearchScreen
 
-private val TabShape = RoundedCornerShape(18.dp)
-private val MiniOrder = listOf(
-    "mini:info", "mini:title", "mini:prev", "mini:toggle", "mini:next", "mini:favorite",
-)
+private val TabShape = RoundedCornerShape(16.dp)
+private val ShellTabs = listOf("首页", "搜索", "歌单", "榜单", "更多")
 
-private data class ShellTab(val label: String, val icon: ImageVector)
-private val ShellTabs = listOf(
-    ShellTab("首页", Icons.Rounded.Home),
-    ShellTab("搜索", Icons.Rounded.Search),
-    ShellTab("歌单", Icons.AutoMirrored.Rounded.QueueMusic),
-    ShellTab("榜单", Icons.Rounded.BarChart),
-    ShellTab("更多", Icons.Rounded.MoreHoriz),
-)
-
-private enum class ShellSection { Top, Content, Mini }
+private enum class ShellSection { Top, Content }
 
 @Composable
 fun MainShell(
@@ -122,6 +116,7 @@ fun MainShell(
     account: AccountStore,
     lyricsRepository: LyricsRepository,
     lyricOffsetMs: Int,
+    weatherRepository: WeatherRepository,
     onlineSearch: OnlineSearchApi,
     searchHistory: SearchHistoryStore,
     companionBridge: CompanionBridge,
@@ -134,7 +129,6 @@ fun MainShell(
     val playlistsGroup = rememberTvFocusGroup("playlists")
     val chartsGroup = rememberTvFocusGroup("charts")
     val moreGroup = rememberTvFocusGroup("more")
-    val miniGroup = rememberTvFocusGroup("mini")
     val scope = rememberCoroutineScope()
     val holder = rememberSaveableStateHolder()
     val accountState by account.state.collectAsStateWithLifecycle()
@@ -142,6 +136,12 @@ fun MainShell(
     val avatarUrl = profile?.avatarUrl.orEmpty()
     val avatar = rememberCoverArt(avatarUrl.ifBlank { null })
     val clock = rememberClock()
+    val weather by produceState<WeatherSnapshot?>(initialValue = null) {
+        while (true) {
+            weatherRepository.current()?.let { value = it }
+            delay(30 * 60_000L)
+        }
+    }
 
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var section by remember { mutableStateOf(ShellSection.Top) }
@@ -187,7 +187,6 @@ fun MainShell(
                         }
                         Key.DirectionRight -> {
                             if (tabIndex < ShellTabs.lastIndex) focusTab(tabIndex + 1)
-                            else shellGroup.focus("shell:gear")
                             true
                         }
                         Key.DirectionDown -> {
@@ -198,25 +197,7 @@ fun MainShell(
                         else -> false
                     }
                 }
-                if (key == "shell:gear") {
-                    return when (event.key) {
-                        Key.DirectionLeft -> { focusTab(ShellTabs.lastIndex); true }
-                        Key.DirectionRight, Key.DirectionUp -> true
-                        Key.DirectionDown -> { enterPage(); true }
-                        else -> false
-                    }
-                }
                 return false
-            }
-            ShellSection.Mini -> {
-                val current = MiniOrder.indexOf(miniGroup.activeKey).coerceAtLeast(0)
-                return when (event.key) {
-                    Key.DirectionUp, Key.Back -> { focusTab(tab); true }
-                    Key.DirectionDown -> true
-                    Key.DirectionLeft -> { miniGroup.focus(MiniOrder[(current - 1).coerceAtLeast(0)]); true }
-                    Key.DirectionRight -> { miniGroup.focus(MiniOrder[(current + 1).coerceAtMost(MiniOrder.lastIndex)]); true }
-                    else -> false
-                }
             }
             ShellSection.Content -> return false
         }
@@ -232,20 +213,18 @@ fun MainShell(
         Box(
             Modifier
                 .fillMaxSize()
-                .padding(bottom = 88.dp)
                 .onFocusChanged { if (it.hasFocus) section = ShellSection.Content }
         ) {
             when (tab) {
                 0 -> holder.SaveableStateProvider("home") {
-                    Box(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                     HomeTab(
                         playback = playback,
                         library = library,
+                        lyricsRepository = lyricsRepository,
+                        lyricOffsetMs = lyricOffsetMs,
                         navController = navController,
                         onBackToTabs = { focusTab(tab) },
-                        onFocusMini = { scope.launch { miniGroup.focusWhenReady("mini:toggle", 600L) } },
                     )
-                    }
                 }
                 1 -> holder.SaveableStateProvider("search") {
                     Box(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 68.dp)) {
@@ -288,34 +267,14 @@ fun MainShell(
             tab = tab,
             group = shellGroup,
             clock = clock,
+            weather = weather,
             onTabFocused = { tab = it },
             onTabSelected = { tab = it },
-            onGear = {
-                navController.navigate(TvRoute.Settings.route) { launchSingleTop = true }
-            },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 8.dp)
+                .padding(horizontal = 24.dp, vertical = 8.dp)
                 .onFocusChanged { if (it.hasFocus) section = ShellSection.Top },
         )
-
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
-                .align(Alignment.BottomCenter)
-                .onFocusChanged { if (it.hasFocus) section = ShellSection.Mini }
-        ) {
-            MiniPlayerBar(
-                playback = playback,
-                lyricsRepository = lyricsRepository,
-                library = library,
-                offsetMs = lyricOffsetMs,
-                onOpenPlayer = {
-                    navController.navigate(TvRoute.Player.route) { launchSingleTop = true }
-                },
-            )
-        }
     }
 }
 
@@ -325,179 +284,144 @@ private fun TopBar(
     hasAvatar: Boolean,
     tab: Int,
     group: TvFocusGroup,
-    clock: ClockFace,
+    clock: String,
+    weather: WeatherSnapshot?,
     onTabFocused: (Int) -> Unit,
     onTabSelected: (Int) -> Unit,
-    onGear: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val accent = LocalTvAccent.current
-    val shape = RoundedCornerShape(26.dp)
+    val textShadow = Shadow(Color.Black.copy(alpha = 0.55f), Offset(0f, 1.5f), 10f)
     Row(
-        modifier
-            .height(52.dp)
-            .shadow(24.dp, shape, clip = false)
-            .clip(shape)
-            .background(
-                Brush.verticalGradient(
-                    listOf(Color(0xEB10141D), Color(0xEB05070C))
-                )
-            )
-            .border(1.dp, Color.White.copy(alpha = 0.12f), shape)
-            .padding(horizontal = 12.dp),
+        modifier.height(52.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            Modifier.width(178.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (hasAvatar) {
-                Image(
-                    bitmap = avatar.image,
-                    contentDescription = "账号头像",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(32.dp).clip(CircleShape)
-                        .border(1.5.dp, accent.copy(alpha = 0.55f), CircleShape),
-                )
-            } else {
-                Box(
-                    Modifier.size(32.dp).clip(CircleShape)
-                        .background(accent.copy(alpha = 0.16f))
-                        .border(1.dp, accent.copy(alpha = 0.45f), CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        "幕",
-                        style = TextStyle(
-                            fontFamily = TvFonts.family,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                        ),
-                        color = accent,
-                    )
-                }
-            }
-            Spacer(Modifier.width(10.dp))
-            Column {
+        if (hasAvatar) {
+            Image(
+                bitmap = avatar.image,
+                contentDescription = "账号头像",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(32.dp).clip(CircleShape)
+                    .border(1.dp, Color.White.copy(alpha = 0.45f), CircleShape),
+            )
+        } else {
+            Box(
+                Modifier.size(32.dp).clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.28f))
+                    .border(1.dp, Color.White.copy(alpha = 0.32f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
                 Text(
-                    "幕音",
+                    "幕",
                     style = TextStyle(
                         fontFamily = TvFonts.family,
-                        fontSize = 16.sp,
-                        lineHeight = 19.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.2.sp,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
                     ),
-                    color = TvColors.TextPrimary,
-                    maxLines = 1,
-                )
-                Text(
-                    "MUYIN · TV",
-                    style = TextStyle(
-                        fontFamily = TvFonts.family,
-                        fontSize = 8.sp,
-                        lineHeight = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        letterSpacing = 2.0.sp,
-                    ),
-                    color = TvColors.TextTertiary,
-                    maxLines = 1,
+                    color = Color.White,
                 )
             }
         }
-        Row(
-            Modifier.weight(1f),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ShellTabs.forEachIndexed { index, item ->
+        Spacer(Modifier.width(10.dp))
+        Text(
+            "幕音",
+            style = TextStyle(
+                fontFamily = TvFonts.family,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.2.sp,
+                shadow = textShadow,
+            ),
+            color = Color.White,
+            maxLines = 1,
+        )
+        Spacer(Modifier.width(28.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ShellTabs.forEachIndexed { index, label ->
                 val active = tab == index
                 TvSurface(
-                    modifier = Modifier.height(36.dp),
+                    modifier = Modifier.height(32.dp),
                     shape = TabShape,
-                    baseColor = if (active) accent.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.025f),
-                    focusedScale = 1.02f,
-                    glowSize = 10.dp,
+                    baseColor = if (active) Color(0xFFF3F5F9) else Color.Transparent,
+                    borderColor = Color.Transparent,
+                    focusedScale = 1.04f,
+                    glowSize = 14.dp,
+                    focusedGlowColor = Color.White.copy(alpha = 0.38f),
                     group = group,
                     focusKey = "shell:$index",
                     onFocusedChange = { if (it) onTabFocused(index) },
                     onClick = { onTabSelected(index) },
                 ) {
-                    Row(
-                        Modifier.fillMaxHeight().padding(horizontal = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    Box(
+                        Modifier.fillMaxHeight().padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        TvIcon(
-                            item.icon,
-                            Modifier.size(15.dp),
-                            tint = if (active) accent else TvColors.TextSecondary,
-                        )
-                        Spacer(Modifier.width(6.dp))
                         Text(
-                            item.label,
+                            label,
                             style = TextStyle(
                                 fontFamily = TvFonts.family,
                                 fontSize = 13.sp,
                                 fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
+                                shadow = if (active) null else textShadow,
                             ),
-                            color = if (active) accent else TvColors.TextSecondary,
+                            color = if (active) Color(0xFF08090E) else Color.White.copy(alpha = 0.82f),
                             maxLines = 1,
                         )
                     }
                 }
-                Spacer(Modifier.width(3.dp))
+                if (index != ShellTabs.lastIndex) Spacer(Modifier.width(4.dp))
             }
         }
-        Row(
-            Modifier.width(150.dp),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    clock.time,
-                    style = TextStyle(
-                        fontFamily = TvFonts.family,
-                        fontSize = 13.sp,
-                        lineHeight = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        fontFeatureSettings = "tnum",
-                    ),
-                    color = TvColors.TextPrimary.copy(alpha = 0.85f),
-                )
-                Text(
-                    clock.weekday,
-                    style = TextStyle(
-                        fontFamily = TvFonts.family,
-                        fontSize = 9.sp,
-                        lineHeight = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        letterSpacing = 1.2.sp,
-                    ),
-                    color = TvColors.TextTertiary,
-                )
-            }
-            Spacer(Modifier.width(10.dp))
-            TvSurface(
-                modifier = Modifier.size(34.dp),
-                shape = CircleShape,
-                baseColor = Color.White.copy(alpha = 0.055f),
-                focusedScale = 1.08f,
-                glowSize = 8.dp,
-                group = group,
-                focusKey = "shell:gear",
-                onClick = onGear,
-            ) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    TvIcon(
-                        Icons.Rounded.Settings,
-                        Modifier.size(16.dp),
-                        tint = TvColors.TextSecondary,
-                    )
+        Spacer(Modifier.weight(1f))
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                clock,
+                style = TextStyle(
+                    fontFamily = TvFonts.family,
+                    fontSize = 15.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFeatureSettings = "tnum",
+                    shadow = textShadow,
+                ),
+                color = Color.White,
+            )
+            Spacer(Modifier.height(2.dp))
+            Box(Modifier.height(13.dp), contentAlignment = Alignment.CenterEnd) {
+                if (weather != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TvIcon(
+                            weatherIcon(weather.kind),
+                            Modifier.size(13.dp),
+                            tint = Color.White.copy(alpha = 0.82f),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "${weather.city} ${weather.tempC}° ${weather.condition}",
+                            style = TextStyle(
+                                fontFamily = TvFonts.family,
+                                fontSize = 10.5.sp,
+                                shadow = textShadow,
+                            ),
+                            color = Color.White.copy(alpha = 0.72f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+private fun weatherIcon(kind: WeatherKind): ImageVector = when (kind) {
+    WeatherKind.SUN -> Icons.Rounded.WbSunny
+    WeatherKind.MOON -> Icons.Rounded.DarkMode
+    WeatherKind.CLOUD -> Icons.Rounded.Cloud
+    WeatherKind.RAIN -> Icons.Rounded.Grain
+    WeatherKind.SNOW -> Icons.Rounded.AcUnit
+    WeatherKind.THUNDER -> Icons.Rounded.FlashOn
+    WeatherKind.FOG -> Icons.Rounded.Cloud
+    WeatherKind.UNKNOWN -> Icons.Rounded.Cloud
 }
 
 @Composable
@@ -1032,26 +956,15 @@ private fun ChartDef.providerLabel(): String = when (provider) {
     else -> subtitle
 }
 
-private data class ClockFace(val time: String, val weekday: String)
-
 @Composable
-private fun rememberClock(): ClockFace {
+private fun rememberClock(): String {
     val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
-    val weekdays = remember { listOf("周一", "周二", "周三", "周四", "周五", "周六", "周日") }
-    val initial = remember {
-        ClockFace(
-            LocalTime.now().format(timeFormatter),
-            weekdays[LocalDate.now().dayOfWeek.value - 1],
-        )
-    }
-    val face by produceState(initialValue = initial) {
+    val initial = remember { LocalTime.now().format(timeFormatter) }
+    val time by produceState(initialValue = initial) {
         while (true) {
             delay(10_000L)
-            value = ClockFace(
-                LocalTime.now().format(timeFormatter),
-                weekdays[LocalDate.now().dayOfWeek.value - 1],
-            )
+            value = LocalTime.now().format(timeFormatter)
         }
     }
-    return face
+    return time
 }

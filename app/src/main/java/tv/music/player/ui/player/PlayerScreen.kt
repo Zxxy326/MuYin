@@ -202,10 +202,40 @@ fun PlayerScreen(
     var lyricMatchError by remember { mutableStateOf<String?>(null) }
 
     val style = settings.lyricStyle
+    val lyricsKey = listOf(
+        snapshot.track.id,
+        snapshot.track.onlineSource,
+        snapshot.track.onlineSongId,
+        snapshot.track.onlineSongNumericId,
+        snapshot.track.title,
+        snapshot.track.artist,
+    ).joinToString("|")
 
-    LaunchedEffect(snapshot.track.id, lyricsAttempt) {
+    LaunchedEffect(lyricsKey, lyricsAttempt) {
         lyricsState = LyricsState.Loading
-        lyricsState = lyricsRepository.load(snapshot.track, forceRefresh = lyricsAttempt > 0)
+        var retry = 0
+        while (true) {
+            val result = lyricsRepository.load(
+                snapshot.track,
+                forceRefresh = lyricsAttempt > 0 || retry > 0,
+            )
+            lyricsState = result
+            val retryable = result is LyricsState.Failed ||
+                (result is LyricsState.Unavailable && (
+                    result.message.contains("缺少歌曲 ID") || result.message.contains("暂无歌词")
+                ))
+            if (!retryable || retry >= 2) break
+            delay(if (retry == 0) 800L else 1_600L)
+            retry++
+        }
+    }
+
+    LaunchedEffect(lyricsState, snapshot.track.id, snapshot.queue) {
+        if (lyricsState !is LyricsState.Ready) return@LaunchedEffect
+        val index = snapshot.queue.indexOfFirst { it.id == snapshot.track.id }
+        val next = snapshot.queue.getOrNull(index + 1) ?: return@LaunchedEffect
+        if (next.libraryKey() == snapshot.track.libraryKey()) return@LaunchedEffect
+        runCatching { lyricsRepository.load(next) }
     }
 
     val windowFocused = LocalWindowInfo.current.isWindowFocused

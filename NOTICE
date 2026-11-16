@@ -78,6 +78,15 @@ Daily Music (https://github.com/Zxxy326/daily-music)
   Apache License 2.0
   https://fonts.google.com/icons
 
+- GeoNames 国内城市表（assets/geonames_cn.json）
+  City data derived from GeoNames, licensed under CC BY 4.0.
+  https://www.geonames.org/  https://creativecommons.org/licenses/by/4.0/
+  仅用于按经纬度匹配最近城市。
+
+- Open-Meteo（天气数据）
+  Weather data by Open-Meteo.com, licensed under CC BY 4.0.
+  https://open-meteo.com/
+
 - QQ 音乐 QRC 解密算法（改版 DES）参考并移植自：
   TLittlePrince/qrcDecrypt  https://github.com/TLittlePrince/qrcDecrypt
   SuJiKiNen/LyricDecoder    https://github.com/SuJiKiNen/LyricDecoder

@@ -32,17 +32,32 @@ object QrcParser {
             val start = header.groupValues[1].toLongOrNull() ?: return@forEach
             val duration = header.groupValues[2].toLongOrNull() ?: 0L
             val body = line.substring(header.range.last + 1)
-            val words = parseWords(body)
-            if (words.isEmpty()) return@forEach
-            val text = words.joinToString("") { it.text }.trim()
+            val rawWords = parseWords(body)
+            if (rawWords.isEmpty()) return@forEach
+            val relativeWords = rawWords.first().timeMs < start - 200L
+            val baseWords = if (relativeWords) {
+                rawWords.map { it.copy(timeMs = it.timeMs + start) }
+            } else {
+                rawWords
+            }
+            val text = baseWords.joinToString("") { it.text }.trim()
             if (text.isBlank()) return@forEach
+            val lineDuration = if (duration > 0L) {
+                duration
+            } else {
+                baseWords.lastOrNull()?.let { (it.timeMs + it.durationMs - start).coerceAtLeast(0L) } ?: 0L
+            }
             val translation = translationAt(translations, start)
             lines += LyricLine(
                 timeMs = (start + fileOffset).coerceAtLeast(0),
                 text = text,
                 translation = translation,
-                durationMs = duration,
-                words = if (fileOffset == 0L) words else words.map { it.copy(timeMs = it.timeMs + fileOffset) },
+                durationMs = lineDuration,
+                words = if (fileOffset == 0L) {
+                    baseWords
+                } else {
+                    baseWords.map { it.copy(timeMs = it.timeMs + fileOffset) }
+                },
             )
         }
 

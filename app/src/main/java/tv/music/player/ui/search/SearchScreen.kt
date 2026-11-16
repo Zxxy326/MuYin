@@ -695,7 +695,7 @@ private fun T9Panel(
                     color = TvColors.TextTertiary,
                 )
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.weight(1f))
             rows.forEachIndexed { rowIndex, row ->
                 Row(
                     Modifier.fillMaxWidth(),

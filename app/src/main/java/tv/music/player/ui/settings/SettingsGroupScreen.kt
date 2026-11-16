@@ -545,6 +545,12 @@ private fun buildEntries(
                 subtitle = "账号歌单 · 本地库 · 音源市场",
             ),
             SettingEntry.Info(
+                key = "weatherData",
+                title = "天气数据",
+                value = "Open-Meteo",
+                subtitle = "城市数据 © GeoNames · CC BY 4.0",
+            ),
+            SettingEntry.Info(
                 key = "scale",
                 title = "界面缩放",
                 value = "%.2f×".format(scale),

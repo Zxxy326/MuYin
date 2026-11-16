@@ -491,10 +491,10 @@ class PlaybackController(
         ticker?.cancel()
         ticker = scope.launch {
             while (isActive) {
-                delay(250L)
+                delay(120L)
                 val snapshot = _state.value
                 if (!snapshot.isPlaying || snapshot.track.usesPlayer) break
-                val position = snapshot.positionMs + 250L
+                val position = snapshot.positionMs + 120L
                 if (position >= snapshot.durationMs) {
                     next()
                 } else {
@@ -508,7 +508,7 @@ class PlaybackController(
         ticker?.cancel()
         ticker = scope.launch {
             while (isActive) {
-                delay(400L)
+                delay(120L)
                 val snapshot = _state.value
                 if (!snapshot.track.usesPlayer) break
                 val duration = player.duration.takeIf { it > 0L && it != C.TIME_UNSET }

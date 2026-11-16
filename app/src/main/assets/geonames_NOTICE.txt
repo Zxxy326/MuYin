@@ -1,0 +1,9 @@
+GeoNames 国内城市表
+====================
+City data derived from GeoNames (https://www.geonames.org/).
+Licensed under the Creative Commons Attribution 4.0 License (CC BY 4.0).
+https://creativecommons.org/licenses/by/4.0/
+
+The bundled table (geonames_cn.json) contains Chinese populated places with
+coordinates, population and admin1 code, used only to resolve the nearest city
+for weather display. Weather data is provided by Open-Meteo (https://open-meteo.com/).

@@ -166,7 +166,7 @@ fun SettingsScreen(
                         "长按返回" to "回到首页",
                     )
                 )
-                Spacer(Modifier.height(96.dp))
+                Spacer(Modifier.height(8.dp))
             }
         }
     }

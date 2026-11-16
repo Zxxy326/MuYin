@@ -31,6 +31,7 @@ import tv.music.player.core.search.SearchHistoryStore
 import tv.music.player.core.settings.AppSettings
 import tv.music.player.core.settings.SettingsRepository
 import tv.music.player.core.update.UpdateStore
+import tv.music.player.core.weather.WeatherRepository
 import tv.music.player.ui.account.AccountPlaylistScreen
 import tv.music.player.ui.account.AccountScreen
 import tv.music.player.ui.account.DailyRecommendScreen
@@ -72,6 +73,7 @@ fun TvNavHost(
     lxEngine: LxJsEngine,
     lxFileStore: LxFileStore,
     lyricsRepository: LyricsRepository,
+    weather: WeatherRepository,
 ) {
     NavHost(
         navController = navController,
@@ -88,6 +90,7 @@ fun TvNavHost(
                 account = account,
                 lyricsRepository = lyricsRepository,
                 lyricOffsetMs = settings.lyricOffsetMs,
+                weatherRepository = weather,
                 onlineSearch = onlineSearch,
                 searchHistory = searchHistory,
                 companionBridge = companionBridge,
