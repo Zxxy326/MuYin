@@ -148,7 +148,7 @@ fun TvMusicApp() {
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .windowInsetsPadding(WindowInsets.navigationBars)
-                                .padding(horizontal = 48.dp, vertical = 20.dp),
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
                         )
                     }
 

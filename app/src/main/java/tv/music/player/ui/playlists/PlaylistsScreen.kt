@@ -1,9 +1,12 @@
 package tv.music.player.ui.playlists
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,31 +14,44 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
 import tv.music.player.core.account.AccountStore
-import tv.music.player.core.charts.Charts
+import tv.music.player.core.focus.TvFocusGroup
 import tv.music.player.core.focus.TvSurface
 import tv.music.player.core.focus.rememberTvFocusGroup
 import tv.music.player.core.playback.PlaybackController
+import tv.music.player.core.theme.LocalTvAccent
 import tv.music.player.core.theme.TvColors
 import tv.music.player.core.theme.TvDimens
-import tv.music.player.core.theme.TvType
+import tv.music.player.core.theme.TvFonts
+import tv.music.player.core.theme.rememberCoverArt
 import tv.music.player.ui.components.ActionChip
-import tv.music.player.ui.components.ChartCard
 import tv.music.player.ui.components.MainTabBar
 import tv.music.player.ui.components.SectionHeader
 import tv.music.player.ui.components.TrackArtwork
 import tv.music.player.ui.components.TvBackdrop
+import tv.music.player.ui.components.TvIcon
 import tv.music.player.ui.components.TvRail
 import tv.music.player.ui.navigation.TvRoute
 
@@ -59,10 +75,9 @@ fun PlaylistsScreen(
     val square = accountState.square
     val squareCat = accountState.squareCat
     val squareLoading = accountState.squareLoading
-    val charts = Charts.all
     val gutter = if (embedded) 0.dp else 26.dp
-    val railGap = if (embedded) 12.dp else 16.dp
-    val railPadding = if (embedded) PaddingValues(vertical = 8.dp) else PaddingValues(vertical = 26.dp, horizontal = 26.dp)
+    val railGap = if (embedded) 14.dp else 16.dp
+    val railPadding = if (embedded) PaddingValues(vertical = 6.dp) else PaddingValues(vertical = 20.dp, horizontal = 26.dp)
 
     LaunchedEffect(Unit) {
         account.refresh()
@@ -71,7 +86,7 @@ fun PlaylistsScreen(
         val target = when {
             recommended.isNotEmpty() -> "rec:0"
             playlists.isNotEmpty() -> "pl:0"
-            else -> "chart:0"
+            else -> "cat:0"
         }
         if (!embedded) group.focusWhenReady(target, timeoutMs = 1_500L)
     }
@@ -96,20 +111,57 @@ fun PlaylistsScreen(
                 modifier = Modifier.padding(horizontal = 26.dp),
             )
             if (!embedded) Spacer(Modifier.height(14.dp))
+            Row(
+                Modifier.fillMaxWidth().height(44.dp).padding(horizontal = gutter),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column {
+                    Text(
+                        "歌单",
+                        style = TextStyle(
+                            fontFamily = TvFonts.family,
+                            fontSize = 24.sp,
+                            lineHeight = 28.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.3).sp,
+                        ),
+                        color = TvColors.TextPrimary,
+                    )
+                    Text(
+                        "分类热门 · 我的收藏与推荐",
+                        style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
+                        color = TvColors.TextSecondary,
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                Text(
+                    if (playlists.isEmpty()) "登录后同步我的歌单" else "${playlists.size} 个我的歌单",
+                    style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.5.sp),
+                    color = TvColors.TextTertiary,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
             LazyColumn(
                 Modifier.fillMaxWidth().weight(1f),
                 contentPadding = PaddingValues(bottom = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 if (recommended.isNotEmpty()) {
                     item {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             SectionHeader(
                                 "网易云推荐",
                                 modifier = Modifier.padding(horizontal = gutter),
                                 trailing = "每日推荐 / 雷达等 · 登录更准",
                             )
-                            TvRail(items = recommended, keyPrefix = "rec", group = group, initialIndex = 0, spacing = railGap, contentPadding = railPadding) { _, pl, focusKey ->
+                            TvRail(
+                                items = recommended,
+                                keyPrefix = "rec",
+                                group = group,
+                                initialIndex = 0,
+                                spacing = railGap,
+                                contentPadding = railPadding,
+                            ) { _, pl, focusKey ->
                                 PlaylistCard(pl, group, focusKey) {
                                     navController.navigate(TvRoute.AccountPlaylist.of(pl.provider, pl.id))
                                 }
@@ -118,13 +170,20 @@ fun PlaylistsScreen(
                     }
                 }
                 item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         SectionHeader(
                             "歌单广场",
                             modifier = Modifier.padding(horizontal = gutter),
                             trailing = "网易云 · 分类热门",
                         )
-                        TvRail(items = SQUARE_CATS, keyPrefix = "cat", group = group, initialIndex = 0, spacing = railGap, contentPadding = railPadding) { _, cat, focusKey ->
+                        TvRail(
+                            items = SQUARE_CATS,
+                            keyPrefix = "cat",
+                            group = group,
+                            initialIndex = 0,
+                            spacing = 8.dp,
+                            contentPadding = railPadding,
+                        ) { _, cat, focusKey ->
                             ActionChip(
                                 label = cat,
                                 group = group,
@@ -136,15 +195,24 @@ fun PlaylistsScreen(
                         when {
                             squareLoading -> Text(
                                 "正在加载「$squareCat」歌单…",
-                                style = TvType.caption, color = TvColors.TextTertiary,
-                                modifier = Modifier.padding(horizontal = gutter),
+                                style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
+                                color = TvColors.TextTertiary,
+                                modifier = Modifier.padding(horizontal = gutter, vertical = 8.dp),
                             )
                             square.isEmpty() -> Text(
                                 "「$squareCat」暂无歌单，换个分类试试。",
-                                style = TvType.caption, color = TvColors.TextTertiary,
-                                modifier = Modifier.padding(horizontal = gutter),
+                                style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
+                                color = TvColors.TextTertiary,
+                                modifier = Modifier.padding(horizontal = gutter, vertical = 8.dp),
                             )
-                            else -> TvRail(items = square, keyPrefix = "sq", group = group, initialIndex = 0, spacing = railGap, contentPadding = railPadding) { _, pl, focusKey ->
+                            else -> TvRail(
+                                items = square,
+                                keyPrefix = "sq",
+                                group = group,
+                                initialIndex = 0,
+                                spacing = railGap,
+                                contentPadding = railPadding,
+                            ) { _, pl, focusKey ->
                                 PlaylistCard(pl, group, focusKey) {
                                     navController.navigate(TvRoute.AccountPlaylist.of(pl.provider, pl.id))
                                 }
@@ -153,37 +221,41 @@ fun PlaylistsScreen(
                     }
                 }
                 item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         SectionHeader(
                             "我的歌单",
                             modifier = Modifier.padding(horizontal = gutter),
-                            trailing = if (playlists.isEmpty()) "登录账号后同步 · 见「我的」" else "${playlists.size} 个",
+                            trailing = if (playlists.isEmpty()) "登录账号后同步" else "${playlists.size} 个",
                         )
                         if (playlists.isEmpty()) {
-                            Text(
-                                "还没有歌单。到「我的 → 账号」登录网易云 / QQ 后自动同步。",
-                                style = TvType.caption,
-                                color = TvColors.TextTertiary,
-                                modifier = Modifier.padding(horizontal = gutter),
-                            )
+                            Box(
+                                Modifier.fillMaxWidth().height(60.dp)
+                                    .padding(top = 8.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color.White.copy(alpha = 0.03f))
+                                    .border(1.dp, Color.White.copy(alpha = 0.07f), RoundedCornerShape(12.dp))
+                                    .padding(horizontal = 16.dp),
+                                contentAlignment = Alignment.CenterStart,
+                            ) {
+                                Text(
+                                    "还没有歌单。到「更多 → 管理账号」登录网易云 / QQ 后自动同步。",
+                                    style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
+                                    color = TvColors.TextTertiary,
+                                )
+                            }
                         } else {
-                            TvRail(items = playlists, keyPrefix = "pl", group = group, initialIndex = 0, spacing = railGap, contentPadding = railPadding) { _, pl, focusKey ->
+                            TvRail(
+                                items = playlists,
+                                keyPrefix = "pl",
+                                group = group,
+                                initialIndex = 0,
+                                spacing = railGap,
+                                contentPadding = railPadding,
+                            ) { _, pl, focusKey ->
                                 PlaylistCard(pl, group, focusKey) {
                                     navController.navigate(TvRoute.AccountPlaylist.of(pl.provider, pl.id))
                                 }
                             }
-                        }
-                    }
-                }
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SectionHeader("热门榜单", modifier = Modifier.padding(horizontal = gutter), trailing = "QQ / 网易云 · 每日更新")
-                        TvRail(items = charts, keyPrefix = "chart", group = group, initialIndex = 0, spacing = railGap, contentPadding = railPadding) { index, chart, focusKey ->
-                            ChartCard(
-                                name = chart.name, subtitle = chart.subtitle, index = index,
-                                group = group, focusKey = focusKey,
-                                onClick = { navController.navigate(TvRoute.ChartDetail.of(chart.id)) },
-                            )
                         }
                     }
                 }
@@ -195,33 +267,68 @@ fun PlaylistsScreen(
 @Composable
 private fun PlaylistCard(
     pl: tv.music.player.core.account.AccountPlaylist,
-    group: tv.music.player.core.focus.TvFocusGroup,
+    group: TvFocusGroup,
     focusKey: String,
     onClick: () -> Unit,
 ) {
+    val accent = LocalTvAccent.current
+    var focused by remember(pl.id) { mutableStateOf(false) }
     TvSurface(
-        modifier = Modifier.size(width = 150.dp, height = 190.dp),
-        shape = RoundedCornerShape(12.dp),
-        baseColor = TvColors.Surface.copy(alpha = 0.6f),
+        modifier = Modifier.size(width = 150.dp, height = 188.dp),
+        shape = RoundedCornerShape(16.dp),
+        baseColor = if (focused) Color.White.copy(alpha = 0.05f) else Color.Transparent,
+        focusedScale = 1.03f,
+        glowSize = 12.dp,
         group = group,
         focusKey = focusKey,
+        onFocusedChange = { focused = it },
         onClick = onClick,
     ) {
-        Column(Modifier.padding(8.dp)) {
-            TrackArtwork(
-                track = tv.music.player.core.playback.DemoTrack(
-                    id = pl.id.hashCode(), title = pl.name, artist = pl.provider,
-                    album = "", durationMs = 0, colorSeed = pl.id.hashCode(),
-                    coverUrl = pl.coverUrl,
+        Column(Modifier.fillMaxSize().padding(4.dp)) {
+            Box(
+                Modifier.size(142.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White.copy(alpha = 0.04f))
+            ) {
+                TrackArtwork(
+                    track = tv.music.player.core.playback.DemoTrack(
+                        id = pl.id.hashCode(), title = pl.name, artist = pl.provider,
+                        album = "", durationMs = 0, colorSeed = pl.id.hashCode(),
+                        coverUrl = pl.coverUrl,
+                    ),
+                    modifier = Modifier.fillMaxSize(),
+                    corner = 0.dp,
+                )
+                if (focused) {
+                    Box(
+                        Modifier.align(Alignment.BottomEnd).padding(8.dp)
+                            .size(28.dp).clip(CircleShape)
+                            .background(Color(0xCC05070C))
+                            .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        TvIcon(Icons.Rounded.PlayArrow, Modifier.size(15.dp), tint = accent)
+                    }
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                pl.name,
+                style = TextStyle(
+                    fontFamily = TvFonts.family,
+                    fontSize = 13.5.sp,
+                    lineHeight = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
                 ),
-                modifier = Modifier.fillMaxWidth().height(134.dp),
-                corner = 8.dp,
+                color = TvColors.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(8.dp))
-            Text(pl.name, style = TvType.label, color = TvColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 if (pl.trackCount > 0) "${pl.trackCount} 首" else "推荐歌单",
-                style = TvType.caption, color = TvColors.TextSecondary, maxLines = 1,
+                style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.5.sp, lineHeight = 14.sp),
+                color = TvColors.TextTertiary,
+                maxLines = 1,
             )
         }
     }

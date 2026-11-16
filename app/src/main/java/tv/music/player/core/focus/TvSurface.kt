@@ -50,8 +50,8 @@ fun TvSurface(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(18.dp),
     baseColor: Color = TvColors.Surface,
-    focusedScale: Float = 1.08f,
-    focusedBorderWidth: Dp = 3.dp,
+    focusedScale: Float = 1.05f,
+    focusedBorderWidth: Dp = 2.dp,
     glowSize: Dp = 16.dp,
     focusedBorderColor: Color? = null,
     focusedGlowColor: Color? = null,
@@ -102,7 +102,7 @@ fun TvSurface(
         animationSpec = tween(if (animations) 160 else 0),
         label = "focus-border",
     )
-    val ringColor = focusedBorderColor ?: accent
+    val ringColor = focusedBorderColor ?: Color.White.copy(alpha = 0.92f)
     val glowColor = focusedGlowColor ?: accent
     val glowPx = with(LocalDensity.current) { glow.toPx() }
     val borderColor by animateColorAsState(

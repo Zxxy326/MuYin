@@ -16,13 +16,18 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import tv.music.player.core.focus.TvFocusGroup
 import tv.music.player.core.focus.TvSurface
 import tv.music.player.core.theme.TvColors
+import tv.music.player.core.theme.TvFonts
 import tv.music.player.core.theme.TvType
 
 @Composable
@@ -39,9 +44,9 @@ fun SettingRow(
     onKeyEvent: ((KeyEvent) -> Boolean)? = null,
 ) {
     TvSurface(
-        modifier = modifier.fillMaxWidth().height(74.dp),
-        shape = RoundedCornerShape(16.dp),
-        baseColor = TvColors.Surface.copy(alpha = 0.62f),
+        modifier = modifier.fillMaxWidth().height(68.dp),
+        shape = RoundedCornerShape(14.dp),
+        baseColor = Color.White.copy(alpha = 0.035f),
         focusedScale = 1.02f,
         glowSize = 12.dp,
         group = group,
@@ -52,13 +57,18 @@ fun SettingRow(
         Row(
             Modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
                     title,
-                    style = TvType.title,
+                    style = TextStyle(
+                        fontFamily = TvFonts.family,
+                        fontSize = 16.sp,
+                        lineHeight = 20.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
                     color = TvColors.TextPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -66,7 +76,7 @@ fun SettingRow(
                 if (subtitle != null) {
                     Text(
                         subtitle,
-                        style = TvType.caption,
+                        style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.5.sp, lineHeight = 14.sp),
                         color = TvColors.TextSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -77,7 +87,11 @@ fun SettingRow(
             if (toggle != null) {
                 SwitchVisual(toggle)
             } else if (valueText != null) {
-                Text(valueText, style = TvType.label, color = TvColors.TextSecondary)
+                Text(
+                    valueText,
+                    style = TextStyle(fontFamily = TvFonts.family, fontSize = 12.sp),
+                    color = TvColors.TextSecondary,
+                )
             }
             if (showChevron) {
                 Spacer(Modifier.width(8.dp))

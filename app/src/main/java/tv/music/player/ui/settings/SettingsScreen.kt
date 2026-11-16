@@ -31,8 +31,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
 import tv.music.player.BuildConfig
@@ -42,6 +46,7 @@ import tv.music.player.core.settings.AppSettings
 import tv.music.player.core.theme.LocalAnimationsEnabled
 import tv.music.player.core.theme.LocalTvAccent
 import tv.music.player.core.theme.TvColors
+import tv.music.player.core.theme.TvFonts
 import tv.music.player.core.theme.TvType
 import tv.music.player.ui.components.KeyHintBar
 import tv.music.player.ui.components.TagChip
@@ -78,11 +83,11 @@ fun SettingsScreen(
             Column(Modifier.fillMaxSize()) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     TvSurface(
-                        modifier = Modifier.size(46.dp),
+                        modifier = Modifier.size(40.dp),
                         shape = CircleShape,
-                        baseColor = TvColors.SurfaceElevated,
-                        focusedScale = 1.1f,
-                        glowSize = 12.dp,
+                        baseColor = Color.White.copy(alpha = 0.06f),
+                        focusedScale = 1.08f,
+                        glowSize = 10.dp,
                         group = group,
                         focusKey = "back",
                         recordFocus = false,
@@ -90,28 +95,38 @@ fun SettingsScreen(
                     ) {
                         TvIcon(
                             icon = Icons.Rounded.ArrowBack,
-                            modifier = Modifier.size(22.dp),
+                            modifier = Modifier.size(19.dp),
                             tint = TvColors.TextPrimary,
                             contentDescription = "返回",
                         )
                     }
                     Spacer(Modifier.width(14.dp))
                     Column {
-                        Text("设置", style = TvType.display, color = TvColors.TextPrimary)
+                        Text(
+                            "设置",
+                            style = TextStyle(
+                                fontFamily = TvFonts.family,
+                                fontSize = 24.sp,
+                                lineHeight = 28.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = (-0.3).sp,
+                            ),
+                            color = TvColors.TextPrimary,
+                        )
                         Text(
                             "遥控器方向键浏览 · OK 进入 · 返回上一级",
-                            style = TvType.caption,
+                            style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
                             color = TvColors.TextTertiary,
                         )
                     }
                     Spacer(Modifier.weight(1f))
                     Text(
-                        "v${BuildConfig.VERSION_NAME} · M3b2",
-                        style = TvType.caption,
+                        "v${BuildConfig.VERSION_NAME}",
+                        style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
                         color = TvColors.TextTertiary,
                     )
                 }
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(14.dp))
                 Row(Modifier.weight(1f)) {
                     LazyColumn(
                         modifier = Modifier.width(420.dp).fillMaxHeight(),
@@ -130,8 +145,8 @@ fun SettingsScreen(
                     Spacer(Modifier.width(28.dp))
                     TvSurface(
                         modifier = Modifier.weight(1f).fillMaxHeight(),
-                        shape = RoundedCornerShape(22.dp),
-                        baseColor = TvColors.Surface.copy(alpha = 0.62f),
+                        shape = RoundedCornerShape(16.dp),
+                        baseColor = Color.White.copy(alpha = 0.035f),
                     ) {
                         Crossfade(
                             targetState = focusedGroup,
@@ -151,7 +166,7 @@ fun SettingsScreen(
                         "长按返回" to "回到首页",
                     )
                 )
-                Spacer(Modifier.height(104.dp))
+                Spacer(Modifier.height(96.dp))
             }
         }
     }
@@ -167,10 +182,10 @@ private fun SettingsGroupRow(
 ) {
     val accent = LocalTvAccent.current
     TvSurface(
-        modifier = Modifier.fillMaxWidth().height(76.dp),
-        shape = RoundedCornerShape(16.dp),
-        baseColor = if (selected) accent.copy(alpha = 0.1f) else TvColors.Surface.copy(alpha = 0.56f),
-        focusedScale = 1.03f,
+        modifier = Modifier.fillMaxWidth().height(68.dp),
+        shape = RoundedCornerShape(14.dp),
+        baseColor = if (selected) accent.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.035f),
+        focusedScale = 1.025f,
         glowSize = 12.dp,
         group = group,
         focusKey = "group:${info.id}",
@@ -183,24 +198,33 @@ private fun SettingsGroupRow(
         ) {
             Box(
                 Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(12.dp))
                     .background(accent.copy(alpha = if (selected) 0.2f else 0.1f)),
                 contentAlignment = Alignment.Center,
             ) {
-                TvIcon(info.icon, Modifier.size(23.dp), tint = accent)
+                TvIcon(info.icon, Modifier.size(20.dp), tint = accent)
             }
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(info.title, style = TvType.title, color = TvColors.TextPrimary)
+                Text(
+                    info.title,
+                    style = TextStyle(
+                        fontFamily = TvFonts.family,
+                        fontSize = 16.sp,
+                        lineHeight = 20.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    color = TvColors.TextPrimary,
+                )
                 Text(
                     info.subtitle,
-                    style = TvType.caption,
+                    style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.5.sp, lineHeight = 14.sp),
                     color = TvColors.TextSecondary,
                     maxLines = 1,
                 )
             }
-            TvIcon(Icons.Rounded.ChevronRight, Modifier.size(20.dp), tint = TvColors.TextTertiary)
+            TvIcon(Icons.Rounded.ChevronRight, Modifier.size(16.dp), tint = TvColors.TextTertiary)
         }
     }
 }
@@ -208,38 +232,48 @@ private fun SettingsGroupRow(
 @Composable
 private fun GroupPreview(info: SettingsGroupInfo) {
     val accent = LocalTvAccent.current
-    Column(Modifier.fillMaxSize().padding(28.dp)) {
+    Column(Modifier.fillMaxSize().padding(24.dp)) {
         Box(
             Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(20.dp))
+                .size(48.dp)
+                .clip(RoundedCornerShape(14.dp))
                 .background(accent.copy(alpha = 0.16f)),
             contentAlignment = Alignment.Center,
         ) {
-            TvIcon(info.icon, Modifier.size(32.dp), tint = accent)
+            TvIcon(info.icon, Modifier.size(24.dp), tint = accent)
         }
-        Spacer(Modifier.height(18.dp))
-        Text(info.title, style = TvType.headline, color = TvColors.TextPrimary)
+        Spacer(Modifier.height(12.dp))
+        Text(
+            info.title,
+            style = TextStyle(
+                fontFamily = TvFonts.family,
+                fontSize = 22.sp,
+                lineHeight = 28.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.3).sp,
+            ),
+            color = TvColors.TextPrimary,
+        )
         Spacer(Modifier.height(6.dp))
-        Text(info.subtitle, style = TvType.label, color = accent)
-        Spacer(Modifier.height(16.dp))
+        Text(
+            info.subtitle,
+            style = TextStyle(fontFamily = TvFonts.family, fontSize = 12.sp),
+            color = accent,
+        )
+        Spacer(Modifier.height(10.dp))
         Text(
             info.description,
-            style = TvType.body,
+            style = TextStyle(fontFamily = TvFonts.family, fontSize = 14.5.sp, lineHeight = 21.sp),
             color = TvColors.TextSecondary,
+            maxLines = 2,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(14.dp))
         info.highlights.chunked(2).forEach { rowItems ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 rowItems.forEach { TagChip(it) }
             }
             Spacer(Modifier.height(8.dp))
         }
-        Spacer(Modifier.weight(1f))
-        Text(
-            "按 OK 进入 ${info.title}",
-            style = TvType.caption,
-            color = TvColors.TextTertiary,
-        )
     }
 }

@@ -541,7 +541,7 @@ private fun buildEntries(
             SettingEntry.Info(
                 key = "version",
                 title = "版本",
-                value = "${BuildConfig.VERSION_NAME} · M3b2",
+                value = "${BuildConfig.VERSION_NAME}",
                 subtitle = "账号歌单 · 本地库 · 音源市场",
             ),
             SettingEntry.Info(

@@ -12,12 +12,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import tv.music.player.core.focus.TvFocusGroup
 import tv.music.player.core.focus.TvSurface
 import tv.music.player.core.theme.TvColors
-import tv.music.player.core.theme.TvType
+import tv.music.player.core.theme.TvFonts
 
 @Composable
 fun ScreenHeader(
@@ -31,11 +34,11 @@ fun ScreenHeader(
 ) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         TvSurface(
-            modifier = Modifier.size(46.dp),
+            modifier = Modifier.size(40.dp),
             shape = CircleShape,
-            baseColor = TvColors.SurfaceElevated,
-            focusedScale = 1.1f,
-            glowSize = 12.dp,
+            baseColor = Color.White.copy(alpha = 0.06f),
+            focusedScale = 1.08f,
+            glowSize = 10.dp,
             group = group,
             focusKey = backKey,
             recordFocus = false,
@@ -43,16 +46,30 @@ fun ScreenHeader(
         ) {
             TvIcon(
                 icon = Icons.Rounded.ArrowBack,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(19.dp),
                 tint = TvColors.TextPrimary,
                 contentDescription = "返回",
             )
         }
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(14.dp))
         Column {
-            Text(title, style = TvType.display, color = TvColors.TextPrimary)
+            Text(
+                title,
+                style = TextStyle(
+                    fontFamily = TvFonts.family,
+                    fontSize = 24.sp,
+                    lineHeight = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.3).sp,
+                ),
+                color = TvColors.TextPrimary,
+            )
             if (subtitle != null) {
-                Text(subtitle, style = TvType.caption, color = TvColors.TextTertiary)
+                Text(
+                    subtitle,
+                    style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
+                    color = TvColors.TextTertiary,
+                )
             }
         }
         Spacer(Modifier.weight(1f))

@@ -22,12 +22,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.MoreHoriz
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.runtime.Composable
@@ -67,6 +68,7 @@ import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import tv.music.player.core.account.AccountStore
@@ -97,8 +99,7 @@ import tv.music.player.ui.navigation.TvRoute
 import tv.music.player.ui.playlists.PlaylistsScreen
 import tv.music.player.ui.search.SearchScreen
 
-private val ShellCorner = 12.dp
-private val TabShape = RoundedCornerShape(15.dp)
+private val TabShape = RoundedCornerShape(18.dp)
 private val MiniOrder = listOf(
     "mini:info", "mini:title", "mini:prev", "mini:toggle", "mini:next", "mini:favorite",
 )
@@ -107,7 +108,7 @@ private data class ShellTab(val label: String, val icon: ImageVector)
 private val ShellTabs = listOf(
     ShellTab("首页", Icons.Rounded.Home),
     ShellTab("搜索", Icons.Rounded.Search),
-    ShellTab("歌单", Icons.Rounded.QueueMusic),
+    ShellTab("歌单", Icons.AutoMirrored.Rounded.QueueMusic),
     ShellTab("榜单", Icons.Rounded.BarChart),
     ShellTab("更多", Icons.Rounded.MoreHoriz),
 )
@@ -161,7 +162,8 @@ fun MainShell(
                     playlistsGroup.focusWhenReady("cat:0", 400L) ||
                     playlistsGroup.focusWhenReady("chart:0", 400L)
                 3 -> chartsGroup.focusWhenReady("charts:0", 500L)
-                else -> moreGroup.focusWhenReady("more:0", 500L)
+                else -> moreGroup.focusWhenReady("more:0", 500L) ||
+                    moreGroup.focusWhenReady("more:account", 400L)
             }
             if (!ok) focusTab(index)
         }
@@ -246,7 +248,7 @@ fun MainShell(
                     }
                 }
                 1 -> holder.SaveableStateProvider("search") {
-                    Box(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 56.dp)) {
+                    Box(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 68.dp)) {
                         SearchScreen(
                             playback = playback,
                             onlineSearch = onlineSearch,
@@ -258,7 +260,7 @@ fun MainShell(
                     }
                 }
                 2 -> holder.SaveableStateProvider("playlists") {
-                    Box(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 56.dp)) {
+                    Box(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 68.dp)) {
                         PlaylistsScreen(
                             account = account,
                             playback = playback,
@@ -268,12 +270,12 @@ fun MainShell(
                     }
                 }
                 3 -> holder.SaveableStateProvider("charts") {
-                    Box(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 56.dp)) {
+                    Box(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 68.dp)) {
                         ChartsTab(charts, playback, navController)
                     }
                 }
                 else -> holder.SaveableStateProvider("more") {
-                    Box(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 56.dp)) {
+                    Box(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 68.dp)) {
                         MoreTab(account, navController)
                     }
                 }
@@ -288,7 +290,9 @@ fun MainShell(
             clock = clock,
             onTabFocused = { tab = it },
             onTabSelected = { tab = it },
-            onGear = { tab = ShellTabs.lastIndex },
+            onGear = {
+                navController.navigate(TvRoute.Settings.route) { launchSingleTop = true }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp)
@@ -321,30 +325,30 @@ private fun TopBar(
     hasAvatar: Boolean,
     tab: Int,
     group: TvFocusGroup,
-    clock: String,
+    clock: ClockFace,
     onTabFocused: (Int) -> Unit,
     onTabSelected: (Int) -> Unit,
     onGear: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val accent = LocalTvAccent.current
-    val shape = RoundedCornerShape(22.dp)
+    val shape = RoundedCornerShape(26.dp)
     Row(
         modifier
-            .height(44.dp)
-            .shadow(20.dp, shape, clip = false)
+            .height(52.dp)
+            .shadow(24.dp, shape, clip = false)
             .clip(shape)
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xA6202938), Color(0xA60B1019))
+                    listOf(Color(0xEB10141D), Color(0xEB05070C))
                 )
             )
-            .border(1.dp, Color.White.copy(alpha = 0.17f), shape)
+            .border(1.dp, Color.White.copy(alpha = 0.12f), shape)
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
-            Modifier.width(150.dp),
+            Modifier.width(178.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (hasAvatar) {
@@ -352,36 +356,54 @@ private fun TopBar(
                     bitmap = avatar.image,
                     contentDescription = "账号头像",
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(28.dp).clip(CircleShape)
-                        .border(1.5.dp, accent.copy(alpha = 0.7f), CircleShape),
+                    modifier = Modifier.size(32.dp).clip(CircleShape)
+                        .border(1.5.dp, accent.copy(alpha = 0.55f), CircleShape),
                 )
             } else {
                 Box(
-                    Modifier.size(28.dp).clip(CircleShape).background(accent),
+                    Modifier.size(32.dp).clip(CircleShape)
+                        .background(accent.copy(alpha = 0.16f))
+                        .border(1.dp, accent.copy(alpha = 0.45f), CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         "幕",
                         style = TextStyle(
                             fontFamily = TvFonts.family,
-                            fontSize = 13.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                         ),
-                        color = Color(0xFF06110F),
+                        color = accent,
                     )
                 }
             }
-            Spacer(Modifier.width(8.dp))
-            Text(
-                "幕音",
-                style = TextStyle(
-                    fontFamily = TvFonts.family,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                ),
-                color = TvColors.TextPrimary,
-                maxLines = 1,
-            )
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text(
+                    "幕音",
+                    style = TextStyle(
+                        fontFamily = TvFonts.family,
+                        fontSize = 16.sp,
+                        lineHeight = 19.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 0.2.sp,
+                    ),
+                    color = TvColors.TextPrimary,
+                    maxLines = 1,
+                )
+                Text(
+                    "MUYIN · TV",
+                    style = TextStyle(
+                        fontFamily = TvFonts.family,
+                        fontSize = 8.sp,
+                        lineHeight = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 2.0.sp,
+                    ),
+                    color = TvColors.TextTertiary,
+                    maxLines = 1,
+                )
+            }
         }
         Row(
             Modifier.weight(1f),
@@ -389,72 +411,87 @@ private fun TopBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             ShellTabs.forEachIndexed { index, item ->
+                val active = tab == index
                 TvSurface(
-                    modifier = Modifier.height(30.dp),
+                    modifier = Modifier.height(36.dp),
                     shape = TabShape,
-                    baseColor = if (tab == index) accent.copy(alpha = 0.14f) else Color.Transparent,
-                    focusedScale = 1.04f,
-                    glowSize = 8.dp,
+                    baseColor = if (active) accent.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.025f),
+                    focusedScale = 1.02f,
+                    glowSize = 10.dp,
                     group = group,
                     focusKey = "shell:$index",
                     onFocusedChange = { if (it) onTabFocused(index) },
                     onClick = { onTabSelected(index) },
                 ) {
                     Row(
-                        Modifier.fillMaxHeight().padding(horizontal = 10.dp),
+                        Modifier.fillMaxHeight().padding(horizontal = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         TvIcon(
                             item.icon,
-                            Modifier.size(14.dp),
-                            tint = if (tab == index) accent.copy(alpha = 0.95f) else TvColors.TextSecondary,
+                            Modifier.size(15.dp),
+                            tint = if (active) accent else TvColors.TextSecondary,
                         )
-                        Spacer(Modifier.width(5.dp))
+                        Spacer(Modifier.width(6.dp))
                         Text(
                             item.label,
                             style = TextStyle(
                                 fontFamily = TvFonts.family,
                                 fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
                             ),
-                            color = if (tab == index) accent.copy(alpha = 0.95f) else TvColors.TextSecondary,
+                            color = if (active) accent else TvColors.TextSecondary,
                             maxLines = 1,
                         )
                     }
                 }
-                Spacer(Modifier.width(2.dp))
+                Spacer(Modifier.width(3.dp))
             }
         }
         Row(
-            Modifier.width(130.dp),
+            Modifier.width(150.dp),
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                clock,
-                style = TextStyle(
-                    fontFamily = TvFonts.family,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                ),
-                color = TvColors.TextPrimary.copy(alpha = 0.7f),
-            )
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    clock.time,
+                    style = TextStyle(
+                        fontFamily = TvFonts.family,
+                        fontSize = 13.sp,
+                        lineHeight = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFeatureSettings = "tnum",
+                    ),
+                    color = TvColors.TextPrimary.copy(alpha = 0.85f),
+                )
+                Text(
+                    clock.weekday,
+                    style = TextStyle(
+                        fontFamily = TvFonts.family,
+                        fontSize = 9.sp,
+                        lineHeight = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 1.2.sp,
+                    ),
+                    color = TvColors.TextTertiary,
+                )
+            }
             Spacer(Modifier.width(10.dp))
             TvSurface(
-                modifier = Modifier.size(30.dp),
+                modifier = Modifier.size(34.dp),
                 shape = CircleShape,
-                baseColor = Color.White.copy(alpha = 0.07f),
+                baseColor = Color.White.copy(alpha = 0.055f),
                 focusedScale = 1.08f,
                 glowSize = 8.dp,
                 group = group,
                 focusKey = "shell:gear",
-                onFocusedChange = { if (it) onGear() },
                 onClick = onGear,
             ) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     TvIcon(
                         Icons.Rounded.Settings,
-                        Modifier.size(15.dp),
+                        Modifier.size(16.dp),
                         tint = TvColors.TextSecondary,
                     )
                 }
@@ -487,36 +524,42 @@ private fun ChartsTab(
     }
 
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().height(40.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().height(44.dp), verticalAlignment = Alignment.CenterVertically) {
             Column {
                 Text(
                     "榜单",
                     style = TextStyle(
                         fontFamily = TvFonts.family,
-                        fontSize = 22.sp,
-                        lineHeight = 24.sp,
+                        fontSize = 24.sp,
+                        lineHeight = 28.sp,
                         fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.3).sp,
                     ),
                     color = TvColors.TextPrimary,
                 )
                 Text(
-                    "网易云 / QQ 音乐 · 焦点切榜，内容原地更新",
+                    "焦点切榜 · 内容原地更新",
                     style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
                     color = TvColors.TextSecondary,
                 )
             }
             Spacer(Modifier.weight(1f))
             TvSurface(
-                modifier = Modifier.height(32.dp),
-                shape = RoundedCornerShape(ShellCorner),
-                baseColor = accent.copy(alpha = 0.16f),
-                focusedScale = 1.04f,
-                glowSize = 10.dp,
+                modifier = Modifier.height(36.dp),
+                shape = RoundedCornerShape(14.dp),
+                baseColor = accent,
+                focusedScale = 1.03f,
+                glowSize = 12.dp,
                 group = group,
                 focusKey = "charts:playall",
                 onClick = { tracks.firstOrNull()?.let(::play) },
             ) {
-                Box(Modifier.fillMaxHeight().padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
+                Row(
+                    Modifier.fillMaxHeight().padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TvIcon(Icons.Rounded.PlayArrow, Modifier.size(15.dp), tint = Color(0xFF08090E))
+                    Spacer(Modifier.width(5.dp))
                     Text(
                         "播放全部",
                         style = TextStyle(
@@ -524,56 +567,71 @@ private fun ChartsTab(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                         ),
-                        color = accent,
+                        color = Color(0xFF08090E),
                     )
                 }
             }
         }
         Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth().height(52.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth().height(58.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Charts.all.forEachIndexed { index, chart ->
+                val active = selected == index
                 TvSurface(
                     modifier = Modifier.weight(1f).fillMaxHeight(),
-                    shape = RoundedCornerShape(ShellCorner),
-                    baseColor = if (selected == index) accent.copy(alpha = 0.15f) else TvColors.Surface.copy(alpha = 0.8f),
-                    focusedScale = 1.02f,
-                    glowSize = 8.dp,
+                    shape = RoundedCornerShape(16.dp),
+                    baseColor = if (active) accent.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.035f),
+                    focusedScale = 1.015f,
+                    glowSize = 10.dp,
                     group = group,
                     focusKey = "charts:$index",
                     onFocusedChange = { if (it) selected = index },
                     onClick = { selected = index },
                 ) {
-                    Column(
-                        Modifier.fillMaxSize().padding(horizontal = 12.dp),
-                        verticalArrangement = Arrangement.Center,
+                    Row(
+                        Modifier.fillMaxSize().padding(horizontal = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            chart.name,
+                            "0${index + 1}",
                             style = TextStyle(
                                 fontFamily = TvFonts.family,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFeatureSettings = "tnum",
                             ),
-                            color = if (selected == index) accent else TvColors.TextPrimary,
-                            maxLines = 1,
+                            color = if (active) accent.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.18f),
                         )
-                        Text(
-                            chart.providerLabel(),
-                            style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.sp),
-                            color = TvColors.TextSecondary,
-                            maxLines = 1,
-                        )
+                        Spacer(Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                chart.name,
+                                style = TextStyle(
+                                    fontFamily = TvFonts.family,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                ),
+                                color = if (active) accent else TvColors.TextPrimary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                chart.providerLabel(),
+                                style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.sp),
+                                color = TvColors.TextSecondary,
+                                maxLines = 1,
+                            )
+                        }
                     }
                 }
             }
         }
-        Spacer(Modifier.height(10.dp))
-        Row(Modifier.fillMaxWidth().height(30.dp), verticalAlignment = Alignment.CenterVertically) {
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth().height(28.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 Charts.all[selected].name,
                 style = TextStyle(
                     fontFamily = TvFonts.family,
-                    fontSize = 16.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
                 ),
                 color = TvColors.TextPrimary,
@@ -584,12 +642,22 @@ private fun ChartsTab(
                 style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
                 color = TvColors.TextTertiary,
             )
+            Spacer(Modifier.weight(1f))
+            Text(
+                "OK 播放",
+                style = TextStyle(
+                    fontFamily = TvFonts.family,
+                    fontSize = 10.sp,
+                    letterSpacing = 0.6.sp,
+                ),
+                color = TvColors.TextTertiary,
+            )
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(6.dp))
         LazyColumn(
             modifier = Modifier.fillMaxWidth().weight(1f),
             verticalArrangement = Arrangement.spacedBy(4.dp),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 4.dp),
+            contentPadding = PaddingValues(bottom = 4.dp),
         ) {
             itemsIndexed(tracks) { index, track ->
                 ChartTrackRow(
@@ -613,9 +681,9 @@ private fun ChartTrackRow(
     var focused by remember(track.libraryKey()) { mutableStateOf(false) }
     val accent = LocalTvAccent.current
     TvSurface(
-        modifier = Modifier.fillMaxWidth().height(40.dp),
-        shape = RoundedCornerShape(ShellCorner),
-        baseColor = if (focused) TvColors.SurfaceHigh.copy(alpha = 0.7f) else Color.Transparent,
+        modifier = Modifier.fillMaxWidth().height(44.dp),
+        shape = RoundedCornerShape(12.dp),
+        baseColor = if (focused) accent.copy(alpha = 0.08f) else Color.Transparent,
         focusedScale = 1f,
         focusedBorderWidth = 2.dp,
         glowSize = 6.dp,
@@ -625,7 +693,7 @@ private fun ChartTrackRow(
         onClick = onClick,
     ) {
         Row(
-            Modifier.fillMaxSize().padding(horizontal = 10.dp),
+            Modifier.fillMaxSize().padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -634,19 +702,20 @@ private fun ChartTrackRow(
                     fontFamily = TvFonts.family,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
+                    fontFeatureSettings = "tnum",
                 ),
                 color = if (focused) accent else TvColors.TextTertiary,
-                modifier = Modifier.width(22.dp),
+                modifier = Modifier.width(26.dp),
             )
-            TrackArtwork(track = track, modifier = Modifier.size(26.dp), corner = 6.dp)
-            Spacer(Modifier.width(8.dp))
+            TrackArtwork(track = track, modifier = Modifier.size(28.dp), corner = 6.dp)
+            Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     track.title,
                     style = TextStyle(
                         fontFamily = TvFonts.family,
-                        fontSize = 13.sp,
-                        lineHeight = 16.sp,
+                        fontSize = 13.5.sp,
+                        lineHeight = 17.sp,
                         fontWeight = FontWeight.SemiBold,
                     ),
                     color = TvColors.TextPrimary,
@@ -655,27 +724,50 @@ private fun ChartTrackRow(
                 )
                 Text(
                     track.artist,
-                    style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.sp, lineHeight = 13.sp),
+                    style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.5.sp, lineHeight = 14.sp),
                     color = TvColors.TextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            Text(
+                formatDuration(track.durationMs),
+                style = TextStyle(
+                    fontFamily = TvFonts.family,
+                    fontSize = 10.5.sp,
+                    fontWeight = FontWeight.Medium,
+                    fontFeatureSettings = "tnum",
+                ),
+                color = TvColors.TextTertiary,
+            )
         }
     }
+}
+
+private fun formatDuration(ms: Long): String {
+    if (ms <= 0L) return ""
+    val total = ms / 1000
+    return "${total / 60}:${(total % 60).toString().padStart(2, '0')}"
 }
 
 @Composable
 private fun MoreTab(account: AccountStore, navController: NavHostController) {
     val group = rememberTvFocusGroup("more")
     val accountState by account.state.collectAsStateWithLifecycle()
-    val profile = accountState.netease ?: accountState.qq
+    val netease = accountState.netease
+    val qq = accountState.qq
+    val profile = netease ?: qq
+    val avatarUrl = profile?.avatarUrl.orEmpty()
+    val avatar = rememberCoverArt(avatarUrl.ifBlank { null })
     val accent = LocalTvAccent.current
+    val connected = netease != null || qq != null
+    val connectLabel = when {
+        netease != null -> "网易云已连接"
+        qq != null -> "QQ 音乐已连接"
+        else -> "未登录"
+    }
     val entries = listOf(
-        MoreEntry("个人界面", profile?.nickname?.takeIf { it.isNotBlank() } ?: "网易云 / QQ 账号与歌单", Icons.Rounded.Person) {
-            navController.navigate(TvRoute.Mine.route) { launchSingleTop = true }
-        },
-        MoreEntry("音源管理", "本地脚本 · 市场安装", Icons.Rounded.QueueMusic) {
+        MoreEntry("音源管理", "本地脚本 · 市场安装", Icons.AutoMirrored.Rounded.QueueMusic) {
             navController.navigate(TvRoute.SettingsGroup.of("sources")) { launchSingleTop = true }
         },
         MoreEntry("设置", "歌词、动效、更新与关于", Icons.Rounded.Settings) {
@@ -687,91 +779,243 @@ private fun MoreTab(account: AccountStore, navController: NavHostController) {
         MoreEntry("下载与本地", "下载歌曲 · 设备音乐 · SMB", Icons.Rounded.Download) {
             navController.navigate(TvRoute.Downloads.route) { launchSingleTop = true }
         },
-        MoreEntry("关于与更新", "版本信息 · 检查更新", Icons.Rounded.MoreHoriz) {
-            navController.navigate(TvRoute.Settings.route) { launchSingleTop = true }
-        },
     )
 
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().height(40.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().height(44.dp), verticalAlignment = Alignment.CenterVertically) {
             Column {
                 Text(
                     "更多",
                     style = TextStyle(
                         fontFamily = TvFonts.family,
-                        fontSize = 22.sp,
-                        lineHeight = 24.sp,
+                        fontSize = 24.sp,
+                        lineHeight = 28.sp,
                         fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.3).sp,
                     ),
                     color = TvColors.TextPrimary,
                 )
                 Text(
-                    "账号、音源、收藏与设备管理",
+                    "账号、音源、收藏与设备",
                     style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
                     color = TvColors.TextSecondary,
                 )
             }
+            Spacer(Modifier.weight(1f))
+            Text(
+                if (connected) "${accountState.playlists.size} 个歌单已同步" else "未登录也能本地播放",
+                style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
+                color = TvColors.TextTertiary,
+            )
         }
-        Spacer(Modifier.height(10.dp))
-        entries.chunked(3).forEachIndexed { rowIndex, rowEntries ->
-            Row(
-                Modifier.fillMaxWidth().height(78.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+        Spacer(Modifier.height(12.dp))
+        Row(
+            Modifier.fillMaxWidth().height(206.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                Modifier.width(280.dp).fillMaxHeight()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.White.copy(alpha = 0.06f), Color.White.copy(alpha = 0.02f))
+                        )
+                    )
+                    .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(16.dp))
+                    .padding(18.dp)
             ) {
-                rowEntries.forEachIndexed { colIndex, entry ->
-                    val index = rowIndex * 3 + colIndex
+                Column(Modifier.fillMaxSize()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (avatarUrl.isNotBlank()) {
+                            Image(
+                                bitmap = avatar.image,
+                                contentDescription = "账号头像",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.size(58.dp).clip(CircleShape)
+                                    .border(1.5.dp, accent.copy(alpha = 0.55f), CircleShape),
+                            )
+                        } else {
+                            Box(
+                                Modifier.size(58.dp).clip(CircleShape)
+                                    .background(accent.copy(alpha = 0.14f))
+                                    .border(1.dp, accent.copy(alpha = 0.4f), CircleShape),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    "幕",
+                                    style = TextStyle(
+                                        fontFamily = TvFonts.family,
+                                        fontSize = 24.sp,
+                                        fontWeight = FontWeight.Bold,
+                                    ),
+                                    color = accent,
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(14.dp))
+                        Column {
+                            Text(
+                                "ACCOUNT",
+                                style = TextStyle(
+                                    fontFamily = TvFonts.family,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    letterSpacing = 1.6.sp,
+                                ),
+                                color = TvColors.TextTertiary,
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                profile?.nickname?.takeIf { it.isNotBlank() } ?: "本地听众",
+                                style = TextStyle(
+                                    fontFamily = TvFonts.family,
+                                    fontSize = 18.sp,
+                                    lineHeight = 22.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                ),
+                                color = TvColors.TextPrimary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            Modifier.size(6.dp).clip(CircleShape)
+                                .background(if (connected) accent else TvColors.TextTertiary)
+                        )
+                        Spacer(Modifier.width(7.dp))
+                        Text(
+                            connectLabel,
+                            style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
+                            color = TvColors.TextSecondary,
+                        )
+                    }
+                    Spacer(Modifier.weight(1f))
                     TvSurface(
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                        shape = RoundedCornerShape(ShellCorner),
-                        baseColor = TvColors.Surface.copy(alpha = 0.82f),
+                        modifier = Modifier.fillMaxWidth().height(36.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        baseColor = Color.White.copy(alpha = 0.075f),
                         focusedScale = 1.02f,
                         glowSize = 8.dp,
                         group = group,
-                        focusKey = "more:$index",
-                        onClick = entry.onClick,
+                        focusKey = "more:account",
+                        onClick = {
+                            navController.navigate(TvRoute.Account.route) { launchSingleTop = true }
+                        },
                     ) {
                         Row(
-                            Modifier.fillMaxSize().padding(horizontal = 14.dp),
+                            Modifier.fillMaxHeight().padding(horizontal = 14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Box(
-                                Modifier.size(34.dp).clip(RoundedCornerShape(9.dp))
-                                    .background(accent.copy(alpha = 0.13f)),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                TvIcon(entry.icon, Modifier.size(17.dp), tint = accent)
-                            }
-                            Spacer(Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    entry.label,
-                                    style = TextStyle(
-                                        fontFamily = TvFonts.family,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                    ),
-                                    color = TvColors.TextPrimary,
-                                    maxLines = 1,
-                                )
-                                Text(
-                                    entry.hint,
-                                    style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.sp),
-                                    color = TvColors.TextSecondary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
+                            Text(
+                                if (connected) "管理账号" else "登录账号",
+                                style = TextStyle(
+                                    fontFamily = TvFonts.family,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                ),
+                                color = TvColors.TextPrimary,
+                            )
+                            Spacer(Modifier.weight(1f))
+                            TvIcon(
+                                Icons.Rounded.ChevronRight,
+                                Modifier.size(15.dp),
+                                tint = TvColors.TextTertiary,
+                            )
                         }
                     }
                 }
             }
-            Spacer(Modifier.height(10.dp))
+            Column(
+                Modifier.weight(1f).fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                entries.chunked(2).forEachIndexed { rowIndex, rowEntries ->
+                    Row(
+                        Modifier.fillMaxWidth().weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        rowEntries.forEachIndexed { colIndex, entry ->
+                            val index = rowIndex * 2 + colIndex
+                            MoreToolCard(
+                                entry = entry,
+                                focusKey = "more:$index",
+                                group = group,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                            )
+                        }
+                    }
+                }
+            }
         }
+        Spacer(Modifier.weight(1f))
         Text(
             "方向键移动焦点 · OK 进入 · 返回键回到顶栏",
             style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
             color = TvColors.TextTertiary,
         )
+    }
+}
+
+@Composable
+private fun MoreToolCard(
+    entry: MoreEntry,
+    focusKey: String,
+    group: TvFocusGroup,
+    modifier: Modifier = Modifier,
+) {
+    val accent = LocalTvAccent.current
+    TvSurface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        baseColor = Color.White.copy(alpha = 0.035f),
+        focusedScale = 1.02f,
+        glowSize = 10.dp,
+        group = group,
+        focusKey = focusKey,
+        onClick = entry.onClick,
+    ) {
+        Row(
+            Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier.size(38.dp).clip(RoundedCornerShape(12.dp))
+                    .background(accent.copy(alpha = 0.12f))
+                    .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                TvIcon(entry.icon, Modifier.size(19.dp), tint = accent)
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    entry.label,
+                    style = TextStyle(
+                        fontFamily = TvFonts.family,
+                        fontSize = 15.sp,
+                        lineHeight = 19.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    color = TvColors.TextPrimary,
+                    maxLines = 1,
+                )
+                Text(
+                    entry.hint,
+                    style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.5.sp, lineHeight = 14.sp),
+                    color = TvColors.TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            TvIcon(
+                Icons.Rounded.ChevronRight,
+                Modifier.size(16.dp),
+                tint = TvColors.TextTertiary,
+            )
+        }
     }
 }
 
@@ -788,14 +1032,26 @@ private fun ChartDef.providerLabel(): String = when (provider) {
     else -> subtitle
 }
 
+private data class ClockFace(val time: String, val weekday: String)
+
 @Composable
-private fun rememberClock(): String {
-    val formatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
-    val time by produceState(initialValue = LocalTime.now().format(formatter)) {
+private fun rememberClock(): ClockFace {
+    val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
+    val weekdays = remember { listOf("周一", "周二", "周三", "周四", "周五", "周六", "周日") }
+    val initial = remember {
+        ClockFace(
+            LocalTime.now().format(timeFormatter),
+            weekdays[LocalDate.now().dayOfWeek.value - 1],
+        )
+    }
+    val face by produceState(initialValue = initial) {
         while (true) {
             delay(10_000L)
-            value = LocalTime.now().format(formatter)
+            value = ClockFace(
+                LocalTime.now().format(timeFormatter),
+                weekdays[LocalDate.now().dayOfWeek.value - 1],
+            )
         }
     }
-    return time
+    return face
 }

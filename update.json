@@ -1,8 +1,8 @@
 {
-  "versionCode": 27,
-  "versionName": "0.11.13",
-  "apkUrl": "https://github.com/Zxxy326/MuYin/releases/download/v0.11.13/MuYin-0.11.13-public.apk",
-  "sha256": "ef10eec7e013ba3636298e5b6ba1d02bb73a60ca1ecf091cd819b7bf4e588cd3",
+  "versionCode": 28,
+  "versionName": "0.11.14",
+  "apkUrl": "https://github.com/Zxxy326/MuYin/releases/download/v0.11.14/MuYin-0.11.14-public.apk",
+  "sha256": "ae5b6cec063f1dd5aa4e8c6f6e1c2ca12f2f0b0cd798f2be7e68f9c7620e82b9",
   "sizeBytes": 20471577,
-  "notes": "0.11.13：主界面改为一体式胶囊玻璃顶栏——左侧账号头像与幕音标题，中间首页/搜索/歌单/榜单/更多五个模块，右侧时间与设置；焦点在顶栏左右移动时下方内容原地切换，不再跳转页面。首页重做为继续聆听大卡与猜你喜欢列表；歌单页改用同一套 16dp 栅格与 12dp 圆角，焦点移动自动滚到可视区；榜单焦点切榜即时换榜并可一键播放全部。迷你播放条保持原样式并加白色焦点环；内容区按返回键回到顶栏。"
+  "notes": "0.11.14：UI 全面重做为 Midnight Stage 电影感深色语言。近黑底 + 封面主色氛围光、发丝边框、16dp 卡片圆角、白色焦点环 + 主色光晕；顶栏改为 52dp 悬浮胶囊（品牌 / 五模块 / 时间星期 + 设置，设置键直达设置页）；首页改为沉浸式 hero + 横向专辑轨道；歌单广场改无底盒封面卡与白色选中分类；榜单改编辑式榜单选择器、曲目带时长与一键播放；更多页改为账号面板 + 2×2 工具卡；搜索键盘铺满、迷你条新增播放进度线与待播放状态；设置页与所有二级页头统一为新版式。"
 }

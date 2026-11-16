@@ -93,11 +93,13 @@ fun ActionChip(
 ) {
     val accent = LocalTvAccent.current
     TvSurface(
-        modifier = modifier.height(42.dp),
+        modifier = modifier.height(34.dp),
         shape = RoundedCornerShape(50),
-        baseColor = if (primary) accent.copy(alpha = 0.18f) else TvColors.SurfaceElevated,
-        focusedScale = 1.06f,
+        baseColor = if (primary) Color(0xFFF2F4F8) else Color.White.copy(alpha = 0.05f),
+        focusedScale = 1.05f,
         glowSize = 12.dp,
+        focusedBorderColor = if (primary) accent else null,
+        focusedGlowColor = if (primary) accent else null,
         group = group,
         focusKey = focusKey,
         onClick = onClick,
@@ -105,18 +107,22 @@ fun ActionChip(
         Row(
             Modifier
                 .fillMaxHeight()
-                .padding(horizontal = 18.dp),
+                .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (icon != null) {
-                TvIcon(icon, Modifier.size(18.dp), tint = if (primary) accent else TvColors.TextSecondary)
-                Spacer(Modifier.width(8.dp))
+                TvIcon(
+                    icon,
+                    Modifier.size(15.dp),
+                    tint = if (primary) Color(0xFF08090E) else TvColors.TextSecondary,
+                )
+                Spacer(Modifier.width(7.dp))
             }
             Text(
                 text = label,
-                style = TvType.label,
-                color = if (primary) accent else TvColors.TextPrimary,
+                style = TvType.caption,
+                color = if (primary) Color(0xFF08090E) else TvColors.TextSecondary,
                 maxLines = 1,
             )
         }

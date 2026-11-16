@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -47,6 +48,8 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,6 +77,7 @@ import tv.music.player.core.search.encodeTracks
 import tv.music.player.core.search.toDemoTrack
 import tv.music.player.core.theme.LocalTvAccent
 import tv.music.player.core.theme.TvColors
+import tv.music.player.core.theme.TvFonts
 import tv.music.player.core.theme.TvType
 import tv.music.player.ui.components.ActionChip
 import tv.music.player.ui.components.TrackArtwork
@@ -461,28 +465,32 @@ fun SearchScreen(
 private fun QueryPanel(query: String, caretAlpha: Float, modeLabel: String) {
     val accent = LocalTvAccent.current
     TvSurface(
-        modifier = Modifier.fillMaxWidth().height(108.dp),
-        shape = RoundedCornerShape(20.dp),
-        baseColor = TvColors.Surface.copy(alpha = 0.78f),
+        modifier = Modifier.fillMaxWidth().height(104.dp),
+        shape = RoundedCornerShape(18.dp),
+        baseColor = Color.White.copy(alpha = 0.045f),
     ) {
         Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("搜索词 · $modeLabel", style = TvType.caption, color = TvColors.TextTertiary)
+                Text(
+                    "搜索词 · $modeLabel",
+                    style = TvType.overline,
+                    color = TvColors.TextTertiary,
+                )
                 Spacer(Modifier.weight(1f))
-                Text("最多 24 字符", style = TvType.caption, color = TvColors.TextTertiary)
+                Text("最多 24 字符", style = TvType.overline, color = TvColors.TextTertiary)
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = query.ifEmpty { "输入歌名 / 歌手" },
-                    style = TvType.display,
+                    style = TvType.display.copy(fontSize = 34.sp, lineHeight = 40.sp),
                     color = if (query.isEmpty()) TvColors.TextTertiary else TvColors.TextPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = "|",
-                    style = TvType.display,
+                    style = TvType.display.copy(fontSize = 34.sp, lineHeight = 40.sp),
                     color = accent.copy(alpha = caretAlpha),
                 )
             }
@@ -491,13 +499,34 @@ private fun QueryPanel(query: String, caretAlpha: Float, modeLabel: String) {
 }
 
 @Composable
+private fun SearchSectionTitle(title: String, hint: String? = null) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            title,
+            style = TextStyle(
+                fontFamily = TvFonts.family,
+                fontSize = 18.sp,
+                lineHeight = 22.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = (-0.2).sp,
+            ),
+            color = TvColors.TextPrimary,
+        )
+        if (hint != null) {
+            Spacer(Modifier.width(8.dp))
+            Text(
+                hint,
+                style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.5.sp),
+                color = TvColors.TextTertiary,
+            )
+        }
+    }
+}
+
+@Composable
 private fun HotWords(group: TvFocusGroup, onPick: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("热搜", style = TvType.title, color = TvColors.TextPrimary)
-            Spacer(Modifier.width(8.dp))
-            Text("热门搜索", style = TvType.caption, color = TvColors.TextTertiary)
-        }
+        SearchSectionTitle("热搜", "热门搜索")
         DemoCatalog.hotWords.chunked(4).forEachIndexed { rowIndex, row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEachIndexed { columnIndex, word ->
@@ -521,11 +550,7 @@ private fun SuggestionWords(
     onPick: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("猜你想搜", style = TvType.title, color = TvColors.TextPrimary)
-            Spacer(Modifier.width(8.dp))
-            Text("QQ 音乐联想", style = TvType.caption, color = TvColors.TextTertiary)
-        }
+        SearchSectionTitle("猜你想搜", "QQ 音乐联想")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             suggestions.forEachIndexed { index, word ->
                 SearchChip(
@@ -548,11 +573,7 @@ private fun HistoryWords(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("最近搜索", style = TvType.title, color = TvColors.TextPrimary)
-            Spacer(Modifier.width(8.dp))
-            if (history.isNotEmpty()) {
-                Text("${history.size} 条", style = TvType.caption, color = TvColors.TextTertiary)
-            }
+            SearchSectionTitle("最近搜索", if (history.isNotEmpty()) "${history.size} 条" else null)
             Spacer(Modifier.weight(1f))
             ActionChip(
                 label = "清除",
@@ -588,8 +609,8 @@ private fun SearchChip(
     TvSurface(
         modifier = Modifier.width(100.dp).height(34.dp),
         shape = RoundedCornerShape(50),
-        baseColor = TvColors.SurfaceElevated,
-        focusedScale = 1.08f,
+        baseColor = Color.White.copy(alpha = 0.05f),
+        focusedScale = 1.05f,
         glowSize = 10.dp,
         group = group,
         focusKey = focusKey,
@@ -599,7 +620,7 @@ private fun SearchChip(
             Text(
                 text,
                 style = TvType.caption,
-                color = TvColors.TextPrimary,
+                color = TvColors.TextSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -649,34 +670,44 @@ private fun T9Panel(
     onSearch: () -> Unit,
 ) {
     val keys = if (pinyinMode) pinyinKeys else t9Keys
+    val rows = keys.chunked(3)
+    val accent = LocalTvAccent.current
     TvSurface(
         modifier = Modifier.fillMaxSize(),
-        shape = RoundedCornerShape(22.dp),
-        baseColor = TvColors.Surface.copy(alpha = 0.7f),
+        shape = RoundedCornerShape(18.dp),
+        baseColor = Color.White.copy(alpha = 0.035f),
     ) {
         Column(Modifier.fillMaxSize().padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     if (pinyinMode) "拼音九宫格" else "数字九宫格",
-                    style = TvType.label,
+                    style = TextStyle(
+                        fontFamily = TvFonts.family,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
                     color = TvColors.TextPrimary,
                 )
                 Spacer(Modifier.weight(1f))
                 Text(
                     if (pinyinMode) "连按同键换字母 · MENU 切换" else "方向键移动 · OK 输入",
-                    style = TvType.caption,
+                    style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.sp),
                     color = TvColors.TextTertiary,
                 )
             }
-            Spacer(Modifier.height(10.dp))
-            keys.chunked(3).forEachIndexed { rowIndex, row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Spacer(Modifier.height(8.dp))
+            rows.forEachIndexed { rowIndex, row ->
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
                     row.forEachIndexed { columnIndex, key ->
                         val index = rowIndex * 3 + columnIndex
                         T9Button(
                             key = key,
                             group = group,
                             focusKey = "t9:$index",
+                            modifier = Modifier.weight(1f),
                             onClick = {
                                 when (key.digit) {
                                     "清空" -> onClear()
@@ -687,13 +718,13 @@ private fun T9Panel(
                         )
                     }
                 }
-                Spacer(Modifier.height(10.dp))
+                if (rowIndex != rows.lastIndex) Spacer(Modifier.height(8.dp))
             }
             Spacer(Modifier.weight(1f))
             TvSurface(
-                modifier = Modifier.fillMaxWidth().height(46.dp),
-                shape = RoundedCornerShape(50),
-                baseColor = LocalTvAccent.current.copy(alpha = 0.18f),
+                modifier = Modifier.fillMaxWidth().height(44.dp),
+                shape = RoundedCornerShape(14.dp),
+                baseColor = accent,
                 focusedScale = 1.02f,
                 glowSize = 12.dp,
                 group = group,
@@ -705,9 +736,17 @@ private fun T9Panel(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    TvIcon(Icons.Rounded.Search, Modifier.size(20.dp), tint = LocalTvAccent.current)
+                    TvIcon(Icons.Rounded.Search, Modifier.size(18.dp), tint = Color(0xFF08090E))
                     Spacer(Modifier.width(8.dp))
-                    Text("搜索", style = TvType.label, color = LocalTvAccent.current)
+                    Text(
+                        "搜索",
+                        style = TextStyle(
+                            fontFamily = TvFonts.family,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        ),
+                        color = Color(0xFF08090E),
+                    )
                 }
             }
         }
@@ -720,12 +759,13 @@ private fun T9Button(
     group: TvFocusGroup,
     focusKey: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     TvSurface(
-        modifier = Modifier.width(108.dp).height(58.dp),
-        shape = RoundedCornerShape(14.dp),
-        baseColor = TvColors.SurfaceElevated,
-        focusedScale = 1.06f,
+        modifier = modifier.height(56.dp),
+        shape = RoundedCornerShape(12.dp),
+        baseColor = Color.White.copy(alpha = 0.05f),
+        focusedScale = 1.04f,
         glowSize = 10.dp,
         group = group,
         focusKey = focusKey,
@@ -738,13 +778,21 @@ private fun T9Button(
         ) {
             Text(
                 key.digit,
-                style = if (key.special) TvType.label else TvType.title,
+                style = TextStyle(
+                    fontFamily = TvFonts.family,
+                    fontSize = if (key.special) 13.sp else 21.sp,
+                    fontWeight = if (key.special) FontWeight.Medium else FontWeight.SemiBold,
+                ),
                 color = if (key.special) TvColors.TextSecondary else TvColors.TextPrimary,
             )
             if (key.letters.isNotEmpty()) {
                 Text(
                     key.letters,
-                    style = TvType.caption.copy(fontSize = 9.sp, letterSpacing = 1.sp),
+                    style = TextStyle(
+                        fontFamily = TvFonts.family,
+                        fontSize = 9.sp,
+                        letterSpacing = 1.2.sp,
+                    ),
                     color = TvColors.TextTertiary,
                 )
             }

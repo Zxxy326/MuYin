@@ -9,16 +9,17 @@ object TvType {
 
     val hero = TextStyle(
         fontFamily = family,
-        fontSize = 42.sp,
-        lineHeight = 50.sp,
+        fontSize = 46.sp,
+        lineHeight = 52.sp,
         fontWeight = FontWeight.Bold,
-        letterSpacing = (-0.6).sp,
+        letterSpacing = (-1.0).sp,
     )
     val display = TextStyle(
         fontFamily = family,
-        fontSize = 34.sp,
-        lineHeight = 42.sp,
+        fontSize = 36.sp,
+        lineHeight = 44.sp,
         fontWeight = FontWeight.SemiBold,
+        letterSpacing = (-0.4).sp,
     )
     val headline = TextStyle(
         fontFamily = family,
@@ -34,21 +35,28 @@ object TvType {
     )
     val body = TextStyle(
         fontFamily = family,
-        fontSize = 18.sp,
+        fontSize = 17.sp,
         lineHeight = 26.sp,
         fontWeight = FontWeight.Normal,
     )
     val label = TextStyle(
         fontFamily = family,
-        fontSize = 16.sp,
+        fontSize = 15.sp,
         lineHeight = 22.sp,
         fontWeight = FontWeight.Medium,
     )
     val caption = TextStyle(
         fontFamily = family,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
+        fontSize = 13.sp,
+        lineHeight = 19.sp,
         fontWeight = FontWeight.Normal,
+    )
+    val overline = TextStyle(
+        fontFamily = family,
+        fontSize = 10.sp,
+        lineHeight = 14.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 1.6.sp,
     )
     val keycap = TextStyle(
         fontFamily = family,

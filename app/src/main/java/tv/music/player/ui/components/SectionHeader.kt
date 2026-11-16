@@ -13,10 +13,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import tv.music.player.core.theme.LocalTvAccent
 import tv.music.player.core.theme.TvColors
-import tv.music.player.core.theme.TvType
 
 @Composable
 fun SectionHeader(
@@ -27,18 +27,31 @@ fun SectionHeader(
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Box(
             Modifier
-                .width(4.dp)
-                .height(22.dp)
+                .width(3.dp)
+                .height(18.dp)
                 .clip(RoundedCornerShape(2.dp))
                 .background(LocalTvAccent.current)
         )
         Spacer(Modifier.width(10.dp))
-        Text(title, style = TvType.title, color = TvColors.TextPrimary)
+        Text(
+            title,
+            style = androidx.compose.ui.text.TextStyle(
+                fontFamily = tv.music.player.core.theme.TvFonts.family,
+                fontSize = 18.sp,
+                lineHeight = 22.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                letterSpacing = (-0.2).sp,
+            ),
+            color = TvColors.TextPrimary,
+        )
         Spacer(Modifier.weight(1f))
         if (trailing != null) {
             Text(
                 text = trailing,
-                style = TvType.caption,
+                style = androidx.compose.ui.text.TextStyle(
+                    fontFamily = tv.music.player.core.theme.TvFonts.family,
+                    fontSize = 10.5.sp,
+                ),
                 color = TvColors.TextTertiary,
                 modifier = Modifier.widthIn(max = 420.dp),
             )

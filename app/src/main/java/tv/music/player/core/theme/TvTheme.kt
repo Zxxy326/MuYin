@@ -10,27 +10,27 @@ import androidx.tv.material3.darkColorScheme
 import tv.music.player.core.settings.AccentMode
 
 object TvColors {
-    val Background = Color(0xFF0A0C10)
-    val Surface = Color(0xFF141821)
-    val SurfaceElevated = Color(0xFF1D2330)
-    val SurfaceHigh = Color(0xFF252C3B)
-    val TextPrimary = Color(0xFFF4F6FB)
-    val TextSecondary = Color(0xFF9AA4B8)
-    val TextTertiary = Color(0xFF6B7689)
-    val Divider = Color(0x1FFFFFFF)
-    val Scrim = Color(0xCC05070A)
-    val Danger = Color(0xFFFF8A80)
+    val Background = Color(0xFF05060A)
+    val Surface = Color(0xFF0E1118)
+    val SurfaceElevated = Color(0xFF151924)
+    val SurfaceHigh = Color(0xFF1E2431)
+    val TextPrimary = Color(0xFFF5F7FB)
+    val TextSecondary = Color(0xFFA3ABBA)
+    val TextTertiary = Color(0xFF6C7586)
+    val Divider = Color(0x14FFFFFF)
+    val Scrim = Color(0xD905070C)
+    val Danger = Color(0xFFFF8A9A)
 }
 
-val LocalTvAccent = staticCompositionLocalOf { Color(0xFF35D6C4) }
+val LocalTvAccent = staticCompositionLocalOf { Color(0xFF5EEAD4) }
 val LocalAnimationsEnabled = staticCompositionLocalOf { true }
 
 fun accentFor(mode: AccentMode, coverAccent: Color): Color = when (mode) {
     AccentMode.COVER -> coverAccent
-    AccentMode.TEAL -> Color(0xFF35D6C4)
-    AccentMode.AMBER -> Color(0xFFFFB25C)
-    AccentMode.VIOLET -> Color(0xFFB99CFF)
-    AccentMode.ROSE -> Color(0xFFFF86A8)
+    AccentMode.TEAL -> Color(0xFF5EEAD4)
+    AccentMode.AMBER -> Color(0xFFFFC46B)
+    AccentMode.VIOLET -> Color(0xFFA78BFA)
+    AccentMode.ROSE -> Color(0xFFFF8FA3)
 }
 
 @Composable
@@ -42,12 +42,12 @@ fun TvTheme(
     val scheme = remember(accent) {
         darkColorScheme(
             primary = accent,
-            onPrimary = Color(0xFF06110F),
+            onPrimary = Color(0xFF08090E),
             primaryContainer = accent.copy(alpha = 0.22f),
             onPrimaryContainer = Color(0xFFF2FFFC),
             inversePrimary = accent,
             secondary = accent.copy(alpha = 0.75f),
-            onSecondary = Color(0xFF06110F),
+            onSecondary = Color(0xFF08090E),
             secondaryContainer = TvColors.SurfaceElevated,
             onSecondaryContainer = TvColors.TextPrimary,
             tertiary = Color(0xFFFFD9A8),

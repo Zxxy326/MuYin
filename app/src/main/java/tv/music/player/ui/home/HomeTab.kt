@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,10 +17,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,10 +69,9 @@ import tv.music.player.ui.components.TrackArtwork
 import tv.music.player.ui.components.TvIcon
 import tv.music.player.ui.navigation.TvRoute
 
-private val CardCorner = 12.dp
-private val WyRed = Color(0xFFFF6F6F)
-private val TxBlue = Color(0xFF7FB8FF)
-private val LocalGreen = Color(0xFF6FD68A)
+private val CardCorner = 16.dp
+private val CoverCorner = 12.dp
+private val CoverSize = 140.dp
 
 @Composable
 fun HomeTab(
@@ -96,10 +97,10 @@ fun HomeTab(
         if (heroKey == null) rawGuess
         else rawGuess.filter { it.libraryKey() != heroKey }.ifEmpty { rawGuess }
     }
-    val guessSubtitle = if (recent.isEmpty()) "播放后自动推荐" else "根据最近播放 · 本地算法 · ${guessTracks.size} 首"
+    val guessSubtitle = if (recent.isEmpty()) "播放后自动推荐" else "根据最近播放 · ${guessTracks.size} 首"
 
-    val rowState = rememberLazyListState()
-    var rowMoving by remember { mutableStateOf(false) }
+    val railState = rememberLazyListState()
+    var railMoving by remember { mutableStateOf(false) }
 
     fun goPlayer() {
         navController.navigate(TvRoute.Player.route) { launchSingleTop = true }
@@ -126,17 +127,17 @@ fun HomeTab(
         }
     }
 
-    fun focusRowAnimated(index: Int) {
-        if (guessTracks.isEmpty() || rowMoving) return
+    fun focusRailAnimated(index: Int) {
+        if (guessTracks.isEmpty() || railMoving) return
         val target = index.coerceIn(0, guessTracks.lastIndex)
-        rowMoving = true
+        railMoving = true
         scope.launch {
             try {
-                val visible = rowState.layoutInfo.visibleItemsInfo
-                if (visible.none { it.index == target }) rowState.scrollToItem(target)
-                group.focusWhenReady("row:$target", 900L)
+                val visible = railState.layoutInfo.visibleItemsInfo
+                if (visible.none { it.index == target }) railState.scrollToItem(target)
+                group.focusWhenReady("rail:$target", 900L)
             } finally {
-                rowMoving = false
+                railMoving = false
             }
         }
     }
@@ -153,31 +154,23 @@ fun HomeTab(
             }
             key == "home:playall" -> when (event.key) {
                 Key.DirectionUp -> { group.focus("hero:play"); true }
-                Key.DirectionDown -> { focusRowAnimated(0); true }
-                Key.DirectionLeft -> { group.focus("home:feature"); true }
-                Key.DirectionRight -> true
+                Key.DirectionDown -> { focusRailAnimated(0); true }
+                Key.DirectionLeft, Key.DirectionRight -> true
                 else -> false
             }
-            key == "home:feature" -> when (event.key) {
-                Key.DirectionUp -> { group.focus("home:playall"); true }
-                Key.DirectionDown -> { onFocusMini(); true }
-                Key.DirectionRight -> { focusRowAnimated(0); true }
-                Key.DirectionLeft -> true
-                else -> false
-            }
-            key.startsWith("row:") -> {
-                val index = key.removePrefix("row:").toIntOrNull() ?: 0
+            key.startsWith("rail:") -> {
+                val index = key.removePrefix("rail:").toIntOrNull() ?: 0
                 when (event.key) {
-                    Key.DirectionUp -> {
-                        if (index == 0) group.focus("home:playall") else focusRowAnimated(index - 1)
+                    Key.DirectionUp -> { group.focus("home:playall"); true }
+                    Key.DirectionDown -> { onFocusMini(); true }
+                    Key.DirectionLeft -> {
+                        if (index > 0) focusRailAnimated(index - 1)
                         true
                     }
-                    Key.DirectionDown -> {
-                        if (index >= guessTracks.lastIndex) onFocusMini() else focusRowAnimated(index + 1)
+                    Key.DirectionRight -> {
+                        if (index < guessTracks.lastIndex) focusRailAnimated(index + 1)
                         true
                     }
-                    Key.DirectionLeft -> { group.focus("home:feature"); true }
-                    Key.DirectionRight -> true
                     else -> false
                 }
             }
@@ -197,12 +190,12 @@ fun HomeTab(
                     cover = heroCover,
                     group = group,
                     onContinue = ::continueHero,
-                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                    modifier = Modifier.fillMaxWidth().height(220.dp),
                 )
             }
             Spacer(Modifier.height(8.dp))
             Row(
-                Modifier.fillMaxWidth().height(42.dp),
+                Modifier.fillMaxWidth().height(40.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column {
@@ -211,8 +204,9 @@ fun HomeTab(
                         style = TextStyle(
                             fontFamily = TvFonts.family,
                             fontSize = 20.sp,
-                            lineHeight = 24.sp,
+                            lineHeight = 23.sp,
                             fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.2).sp,
                         ),
                         color = TvColors.TextPrimary,
                     )
@@ -230,64 +224,50 @@ fun HomeTab(
                 Spacer(Modifier.weight(1f))
                 TvSurface(
                     modifier = Modifier.height(34.dp),
-                    shape = RoundedCornerShape(CardCorner),
-                    baseColor = LocalTvAccent.current.copy(alpha = 0.16f),
-                    focusedScale = 1.04f,
+                    shape = RoundedCornerShape(14.dp),
+                    baseColor = Color.White.copy(alpha = 0.06f),
+                    focusedScale = 1.03f,
                     glowSize = 10.dp,
                     group = group,
                     focusKey = "home:playall",
                     onClick = ::playAllGuess,
                 ) {
-                    Box(
-                        Modifier.fillMaxHeight().padding(horizontal = 16.dp),
-                        contentAlignment = Alignment.Center,
+                    Row(
+                        Modifier.fillMaxHeight().padding(horizontal = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        TvIcon(
+                            Icons.Rounded.PlayArrow,
+                            Modifier.size(13.dp),
+                            tint = LocalTvAccent.current,
+                        )
+                        Spacer(Modifier.width(5.dp))
                         Text(
                             text = "播放全部",
                             style = TextStyle(
                                 fontFamily = TvFonts.family,
-                                fontSize = 13.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
                             ),
-                            color = LocalTvAccent.current,
+                            color = TvColors.TextPrimary,
                         )
                     }
                 }
             }
-            Spacer(Modifier.height(6.dp))
-            Row(Modifier.fillMaxWidth().weight(1f)) {
-                TvSurface(
-                    modifier = Modifier.fillMaxHeight().aspectRatio(1f),
-                    shape = RoundedCornerShape(CardCorner),
-                    baseColor = Color.Transparent,
-                    focusedScale = 1.02f,
-                    glowSize = 12.dp,
-                    group = group,
-                    focusKey = "home:feature",
-                    onClick = ::playAllGuess,
-                ) {
-                    Image(
-                        bitmap = heroCover.image,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
+            Spacer(Modifier.height(4.dp))
+            LazyRow(
+                state = railState,
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                contentPadding = PaddingValues(0.dp),
+            ) {
+                itemsIndexed(guessTracks) { index, track ->
+                    GuessCard(
+                        index = index,
+                        track = track,
+                        group = group,
+                        onClick = { playTrack(track, guessTracks) },
                     )
-                }
-                Spacer(Modifier.width(14.dp))
-                LazyColumn(
-                    state = rowState,
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                    contentPadding = PaddingValues(0.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    itemsIndexed(guessTracks) { index, track ->
-                        GuessRow(
-                            index = index,
-                            track = track,
-                            group = group,
-                            onClick = { playTrack(track, guessTracks) },
-                        )
-                    }
                 }
             }
         }
@@ -303,32 +283,31 @@ private fun HomeHero(
     modifier: Modifier = Modifier,
 ) {
     val accent = LocalTvAccent.current
-    val shape = RoundedCornerShape(CardCorner)
+    val shape = RoundedCornerShape(18.dp)
     val meta = remember(track.artist, track.album) {
         if (track.album.isBlank() || track.album == track.title) track.artist else "${track.artist} · ${track.album}"
     }
     val watermark = remember(track.title) { track.title.take(10).uppercase() }
     BoxWithConstraints(
-        modifier.clip(shape).background(Color(0xFF0B0F16))
+        modifier.clip(shape).background(Color(0xFF0B0E15))
     ) {
-        val coverSize = (maxHeight * 0.65f).coerceAtMost(150.dp)
-        val markSize = (coverSize.value * 0.8f).sp
+        val markSize = (CoverSize.value * 0.8f).sp
         Image(
             bitmap = cover.image,
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize().blur(18.dp),
+            modifier = Modifier.fillMaxSize().blur(22.dp),
         )
         Box(Modifier.fillMaxSize().background(
             Brush.horizontalGradient(
-                0f to Color(0xF205080D),
-                0.45f to Color(0xC705080D),
-                0.72f to Color(0x6605080D),
-                1f to Color(0x9905080D),
+                0f to Color(0xF205060A),
+                0.42f to Color(0xD905060A),
+                0.72f to Color(0x7805060A),
+                1f to Color(0xB305060A),
             )
         ))
         Box(Modifier.fillMaxSize().background(
-            Brush.verticalGradient(0f to Color(0x1A05080D), 1f to Color(0x9905080D))
+            Brush.verticalGradient(0f to Color(0x1405060A), 1f to Color(0xB305060A))
         ))
         Text(
             text = watermark,
@@ -338,34 +317,36 @@ private fun HomeHero(
                 lineHeight = markSize,
                 fontWeight = FontWeight.Bold,
             ),
-            color = Color.White.copy(alpha = 0.07f),
+            color = Color.White.copy(alpha = 0.06f),
             maxLines = 1,
             softWrap = false,
             overflow = TextOverflow.Clip,
-            modifier = Modifier.align(Alignment.CenterEnd).padding(end = coverSize + 22.dp),
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = CoverSize + 32.dp),
         )
         Column(
             Modifier
                 .align(Alignment.TopStart)
-                .padding(start = 20.dp, top = 56.dp, end = coverSize + 30.dp)
+                .padding(start = 24.dp, top = 62.dp, end = CoverSize + 48.dp)
         ) {
             Text(
                 text = "继续聆听",
                 style = TextStyle(
                     fontFamily = TvFonts.family,
-                    fontSize = 12.sp,
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 2.2.sp,
                 ),
                 color = accent.copy(alpha = 0.92f),
             )
-            Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.height(3.dp))
             Text(
                 text = track.title,
                 style = TextStyle(
                     fontFamily = TvFonts.family,
-                    fontSize = 34.sp,
-                    lineHeight = 38.sp,
+                    fontSize = 42.sp,
+                    lineHeight = 46.sp,
                     fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.8).sp,
                 ),
                 color = TvColors.TextPrimary,
                 maxLines = 1,
@@ -379,31 +360,35 @@ private fun HomeHero(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
             TvSurface(
-                modifier = Modifier.height(38.dp),
-                shape = RoundedCornerShape(CardCorner),
+                modifier = Modifier.height(40.dp),
+                shape = RoundedCornerShape(14.dp),
                 baseColor = accent,
-                focusedScale = 1.05f,
-                glowSize = 12.dp,
-                focusedBorderColor = Color.White.copy(alpha = 0.9f),
-                focusedGlowColor = Color.White.copy(alpha = 0.38f),
+                focusedScale = 1.04f,
+                glowSize = 14.dp,
                 group = group,
                 focusKey = "hero:play",
                 onClick = onContinue,
             ) {
-                Box(
-                    Modifier.fillMaxHeight().padding(horizontal = 18.dp),
-                    contentAlignment = Alignment.Center,
+                Row(
+                    Modifier.fillMaxHeight().padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    TvIcon(
+                        Icons.Rounded.PlayArrow,
+                        Modifier.size(15.dp),
+                        tint = Color(0xFF08090E),
+                    )
+                    Spacer(Modifier.width(5.dp))
                     Text(
                         text = "继续播放",
                         style = TextStyle(
                             fontFamily = TvFonts.family,
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
                         ),
-                        color = Color(0xFF06110F),
+                        color = Color(0xFF08090E),
                     )
                 }
             }
@@ -414,16 +399,16 @@ private fun HomeHero(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 54.dp, end = 18.dp)
-                .size(coverSize)
-                .clip(shape)
-                .border(1.dp, Color.White.copy(alpha = 0.16f), shape),
+                .padding(top = 62.dp, end = 20.dp)
+                .size(CoverSize)
+                .clip(RoundedCornerShape(CoverCorner))
+                .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(CoverCorner)),
         )
     }
 }
 
 @Composable
-private fun GuessRow(
+private fun GuessCard(
     index: Int,
     track: DemoTrack,
     group: TvFocusGroup,
@@ -431,82 +416,64 @@ private fun GuessRow(
 ) {
     val accent = LocalTvAccent.current
     var focused by remember(track.libraryKey()) { mutableStateOf(false) }
-    val source = remember(track) { sourceLabel(track) }
+    val cover = rememberTrackCoverArt(track)
     TvSurface(
-        modifier = Modifier.fillMaxWidth().height(44.dp),
+        modifier = Modifier.width(140.dp).fillMaxHeight(),
         shape = RoundedCornerShape(CardCorner),
-        baseColor = if (focused) TvColors.SurfaceHigh.copy(alpha = 0.72f) else Color.Transparent,
-        focusedScale = 1f,
-        focusedBorderWidth = 2.dp,
-        glowSize = 8.dp,
+        baseColor = if (focused) Color.White.copy(alpha = 0.05f) else Color.Transparent,
+        focusedScale = 1.03f,
+        glowSize = 12.dp,
         group = group,
-        focusKey = "row:$index",
+        focusKey = "rail:$index",
         onFocusedChange = { focused = it },
         onClick = onClick,
     ) {
-        Row(
-            Modifier.fillMaxSize().padding(horizontal = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Column(Modifier.fillMaxSize().padding(4.dp)) {
+            Box(
+                Modifier.size(132.dp)
+                    .clip(RoundedCornerShape(CoverCorner))
+                    .background(Color.White.copy(alpha = 0.04f))
+            ) {
+                Image(
+                    bitmap = cover.image,
+                    contentDescription = track.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                if (focused) {
+                    Box(
+                        Modifier.align(Alignment.BottomEnd).padding(8.dp)
+                            .size(28.dp).clip(CircleShape)
+                            .background(Color(0xCC05070C))
+                            .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        TvIcon(Icons.Rounded.PlayArrow, Modifier.size(15.dp), tint = accent)
+                    }
+                }
+            }
+            Spacer(Modifier.height(6.dp))
             Text(
-                text = (index + 1).toString().padStart(2, '0'),
+                text = track.title,
                 style = TextStyle(
                     fontFamily = TvFonts.family,
-                    fontSize = 11.sp,
+                    fontSize = 13.5.sp,
+                    lineHeight = 17.sp,
                     fontWeight = FontWeight.SemiBold,
                 ),
-                color = if (focused) accent else TvColors.TextTertiary,
-                modifier = Modifier.width(22.dp),
+                color = TvColors.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            TrackArtwork(track = track, modifier = Modifier.size(28.dp), corner = 6.dp)
-            Spacer(Modifier.width(8.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = track.title,
-                    style = TextStyle(
-                        fontFamily = TvFonts.family,
-                        fontSize = 15.sp,
-                        lineHeight = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    ),
-                    color = TvColors.TextPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = track.artist,
-                    style = TextStyle(
-                        fontFamily = TvFonts.family,
-                        fontSize = 11.sp,
-                        lineHeight = 14.sp,
-                    ),
-                    color = TvColors.TextSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            if (source.first.isNotBlank()) {
-                Text(
-                    text = source.first,
-                    style = TextStyle(
-                        fontFamily = TvFonts.family,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                    ),
-                    color = source.second,
-                    maxLines = 1,
-                )
-            }
+            Text(
+                text = track.artist,
+                style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.5.sp, lineHeight = 14.sp),
+                color = TvColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
-}
-
-private fun sourceLabel(track: DemoTrack): Pair<String, Color> = when {
-    track.isLocal -> "本地" to LocalGreen
-    track.onlineSource == "wy" -> "网易云" to WyRed
-    track.onlineSource == "tx" -> "QQ 音乐" to TxBlue
-    track.onlineSource.isNotBlank() -> track.onlineSource.uppercase() to TvColors.TextSecondary
-    else -> "" to TvColors.TextTertiary
 }
 
 private fun buildGuessTracks(

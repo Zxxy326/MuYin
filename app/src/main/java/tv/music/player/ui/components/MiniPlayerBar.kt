@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -92,6 +93,7 @@ fun MiniPlayerBar(
 
     val lyrics = (lyricsState as? LyricsState.Ready)?.lyrics
     val plot = lyrics?.let { currentMiniLine(it, snapshot.positionMs, offsetMs) }
+    val isLive = snapshot.track.usesPlayer
     val spin = remember { Animatable(0f) }
     LaunchedEffect(snapshot.isPlaying) {
         if (!snapshot.isPlaying) return@LaunchedEffect
@@ -101,21 +103,26 @@ fun MiniPlayerBar(
         }
     }
 
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(26.dp)
+    val progress = if (snapshot.durationMs > 0L) {
+        (snapshot.positionMs.toFloat() / snapshot.durationMs).coerceIn(0f, 1f)
+    } else 0f
     TvSurface(
         modifier = modifier.fillMaxWidth().height(80.dp)
-            .border(1.dp, Color.White.copy(alpha = 0.08f), shape),
+            .border(1.dp, Color.White.copy(alpha = 0.1f), shape),
         shape = shape,
-        baseColor = TvColors.SurfaceElevated.copy(alpha = 0.97f),
+        baseColor = Color(0xFF10131C).copy(alpha = 0.94f),
         focusedScale = 1.0f,
         glowSize = 0.dp,
     ) {
+        Box(Modifier.fillMaxSize()) {
         Row(
-            Modifier.fillMaxSize().padding(horizontal = 14.dp),
+            Modifier.fillMaxSize().padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TvSurface(
-                modifier = Modifier.size(54.dp),
+                modifier = Modifier.size(54.dp)
+                    .border(1.dp, Color.White.copy(alpha = 0.14f), CircleShape),
                 shape = CircleShape,
                 baseColor = Color.Transparent,
                 focusedScale = 1.1f,
@@ -145,15 +152,35 @@ fun MiniPlayerBar(
             ) {
                 Column {
                     Text(
+                        text = if (isLive) "正在播放" else "待播放",
+                        style = TextStyle(
+                            fontFamily = TvFonts.family,
+                            fontSize = 8.5.sp,
+                            lineHeight = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = 1.4.sp,
+                        ),
+                        color = if (isLive) accent.copy(alpha = 0.78f) else TvColors.TextTertiary,
+                    )
+                    Text(
                         text = snapshot.track.title,
-                        style = TvType.label,
+                        style = TextStyle(
+                            fontFamily = TvFonts.family,
+                            fontSize = 14.5.sp,
+                            lineHeight = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        ),
                         color = TvColors.TextPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         text = snapshot.track.artist,
-                        style = TvType.caption,
+                        style = TextStyle(
+                            fontFamily = TvFonts.family,
+                            fontSize = 10.5.sp,
+                            lineHeight = 14.sp,
+                        ),
                         color = TvColors.TextSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -209,7 +236,7 @@ fun MiniPlayerBar(
                 }
             }
             Spacer(Modifier.width(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 MiniControl(
                     icon = Icons.Rounded.SkipPrevious,
                     contentDescription = "上一首",
@@ -237,8 +264,22 @@ fun MiniPlayerBar(
                     contentDescription = if (isFavorite) "取消收藏" else "收藏",
                     group = group,
                     focusKey = "mini:favorite",
-                    tint = if (isFavorite) Color(0xFFF0455E) else TvColors.TextPrimary,
+                    tint = if (isFavorite) Color(0xFFFF7A8C) else TvColors.TextPrimary,
                     onClick = { library.toggleFavorite(snapshot.track) },
+                )
+            }
+        }
+            Box(
+                Modifier.align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .height(2.dp)
+                    .clip(RoundedCornerShape(1.dp))
+                    .background(Color.White.copy(alpha = 0.08f))
+            ) {
+                Box(
+                    Modifier.fillMaxWidth(progress).fillMaxHeight()
+                        .background(accent.copy(alpha = 0.9f))
                 )
             }
         }
@@ -258,13 +299,13 @@ private fun MiniControl(
 ) {
     val accent = LocalTvAccent.current
     TvSurface(
-        modifier = modifier.size(if (primary) 44.dp else 38.dp),
+        modifier = modifier.size(if (primary) 46.dp else 38.dp),
         shape = CircleShape,
-        baseColor = if (primary) accent.copy(alpha = 0.92f) else TvColors.SurfaceHigh.copy(alpha = 0.72f),
-        focusedScale = 1.14f,
+        baseColor = if (primary) accent.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.06f),
+        focusedScale = 1.12f,
         glowSize = 10.dp,
-        focusedBorderColor = if (primary) Color.White.copy(alpha = 0.9f) else null,
-        focusedGlowColor = if (primary) Color.White.copy(alpha = 0.4f) else null,
+        focusedBorderColor = if (primary) Color.White.copy(alpha = 0.92f) else null,
+        focusedGlowColor = if (primary) Color.White.copy(alpha = 0.35f) else null,
         group = group,
         focusKey = focusKey,
         onClick = onClick,
@@ -272,8 +313,8 @@ private fun MiniControl(
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             TvIcon(
                 icon,
-                Modifier.size(if (primary) 21.dp else 19.dp),
-                tint = if (primary) Color(0xFF101018) else tint,
+                Modifier.size(if (primary) 22.dp else 18.dp),
+                tint = if (primary) Color(0xFF08090E) else tint,
                 contentDescription = contentDescription,
             )
         }
