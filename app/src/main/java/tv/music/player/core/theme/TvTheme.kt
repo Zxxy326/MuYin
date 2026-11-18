@@ -22,15 +22,15 @@ object TvColors {
     val Danger = Color(0xFFFF8A9A)
 }
 
-val LocalTvAccent = staticCompositionLocalOf { Color(0xFF5EEAD4) }
+val LocalTvAccent = staticCompositionLocalOf { Color(0xFF9ED8CC) }
 val LocalAnimationsEnabled = staticCompositionLocalOf { true }
 
 fun accentFor(mode: AccentMode, coverAccent: Color): Color = when (mode) {
     AccentMode.COVER -> coverAccent
-    AccentMode.TEAL -> Color(0xFF5EEAD4)
-    AccentMode.AMBER -> Color(0xFFFFC46B)
-    AccentMode.VIOLET -> Color(0xFFA78BFA)
-    AccentMode.ROSE -> Color(0xFFFF8FA3)
+    AccentMode.TEAL -> Color(0xFF9ED8CC)
+    AccentMode.AMBER -> Color(0xFFF2CDA2)
+    AccentMode.VIOLET -> Color(0xFFC3B4F2)
+    AccentMode.ROSE -> Color(0xFFF2B9C4)
 }
 
 @Composable

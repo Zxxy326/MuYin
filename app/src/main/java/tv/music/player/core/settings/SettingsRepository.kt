@@ -30,7 +30,6 @@ class SettingsRepository(private val context: Context) {
         val quality = stringPreferencesKey("quality")
         val gapless = booleanPreferencesKey("gapless")
         val fade = booleanPreferencesKey("fade_in_out")
-        val audioFocus = booleanPreferencesKey("audio_focus")
         val companion = booleanPreferencesKey("companion_enabled")
     }
 
@@ -51,7 +50,6 @@ class SettingsRepository(private val context: Context) {
                 quality = prefs[Keys.quality].toEnumOr(defaults.quality),
                 gaplessPlayback = prefs[Keys.gapless] ?: defaults.gaplessPlayback,
                 fadeInOut = prefs[Keys.fade] ?: defaults.fadeInOut,
-                audioFocus = prefs[Keys.audioFocus] ?: defaults.audioFocus,
                 companionEnabled = prefs[Keys.companion] ?: defaults.companionEnabled,
             )
         }
@@ -67,7 +65,6 @@ class SettingsRepository(private val context: Context) {
     suspend fun setQuality(quality: AudioQuality) = put(Keys.quality, quality.name)
     suspend fun setGapless(enabled: Boolean) = put(Keys.gapless, enabled)
     suspend fun setFadeInOut(enabled: Boolean) = put(Keys.fade, enabled)
-    suspend fun setAudioFocus(enabled: Boolean) = put(Keys.audioFocus, enabled)
     suspend fun setCompanionEnabled(enabled: Boolean) = put(Keys.companion, enabled)
 
     private suspend fun <T> put(key: Preferences.Key<T>, value: T) {

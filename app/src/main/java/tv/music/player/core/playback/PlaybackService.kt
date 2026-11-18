@@ -17,6 +17,13 @@ class PlaybackService : MediaSessionService() {
         super.onCreate()
         val playback = (application as TvMusicApplication).container.playback
         val sessionPlayer = object : ForwardingPlayer(playback.player) {
+            override fun play() = playback.requestPlayFromSession()
+
+            override fun setPlayWhenReady(playWhenReady: Boolean) {
+                if (playWhenReady) playback.requestPlayFromSession()
+                else super.setPlayWhenReady(false)
+            }
+
             override fun seekToNext() = playback.next()
             override fun seekToNextMediaItem() = playback.next()
             override fun seekToPrevious() = playback.previous()

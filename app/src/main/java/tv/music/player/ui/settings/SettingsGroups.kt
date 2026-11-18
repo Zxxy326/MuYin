@@ -34,10 +34,10 @@ object SettingsGroups {
         SettingsGroupInfo(
             id = "playback",
             title = "播放",
-            subtitle = "音质 · 无缝 · 音频焦点",
-            description = "音质、淡入淡出、音频焦点与下一首预解析已接入；MediaSessionService 提供后台播放、通知栏与媒体键控制。",
+            subtitle = "音质 · 无缝 · 淡入淡出",
+            description = "音质、淡入淡出与下一首预解析已接入；离开应用自动暂停，其他应用播放声音时也会暂停，不与系统声音混播。通知栏与媒体键仍可控制当前播放。",
             icon = Icons.Rounded.PlayCircle,
-            highlights = listOf("音质", "后台播放", "通知栏", "媒体键"),
+            highlights = listOf("音质", "淡入淡出", "离开即停", "媒体键"),
         ),
         SettingsGroupInfo(
             id = "sources",

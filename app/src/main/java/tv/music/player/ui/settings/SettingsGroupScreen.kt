@@ -210,7 +210,7 @@ fun SettingsGroupScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(bottom = 88.dp),
+                contentPadding = PaddingValues(start = 6.dp, end = 6.dp, bottom = 88.dp),
             ) {
                 if (groupId == "companion") {
                     item(key = "companion-card") {
@@ -454,17 +454,6 @@ private fun buildEntries(
                 onToggle = {
                     save(if (settings.fadeInOut) "已关闭淡入淡出" else "已开启淡入淡出") {
                         repository.setFadeInOut(!settings.fadeInOut)
-                    }
-                },
-            ),
-            SettingEntry.Toggle(
-                key = "audioFocus",
-                title = "音频焦点",
-                subtitle = "被其他应用抢占时自动暂停",
-                checked = settings.audioFocus,
-                onToggle = {
-                    save(if (settings.audioFocus) "已关闭音频焦点" else "已开启音频焦点") {
-                        repository.setAudioFocus(!settings.audioFocus)
                     }
                 },
             ),

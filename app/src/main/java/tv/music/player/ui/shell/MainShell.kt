@@ -635,7 +635,7 @@ private fun ChartTrackRow(
     TvSurface(
         modifier = Modifier.fillMaxWidth().height(44.dp),
         shape = RoundedCornerShape(14.dp),
-        baseColor = if (focused) accent.copy(alpha = 0.1f) else Color.Transparent,
+        baseColor = Color.Transparent,
         borderColor = Color.Transparent,
         focusedScale = 1f,
         focusedBorderWidth = 2.dp,

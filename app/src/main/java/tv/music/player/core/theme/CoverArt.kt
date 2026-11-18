@@ -125,11 +125,11 @@ private fun loadCover(context: Context, url: String, maxSize: Int, needAccent: B
     val paletteSize = 96
     val scaled = Bitmap.createScaledBitmap(bitmap, paletteSize, paletteSize, true)
     val palette = Palette.from(scaled).maximumColorCount(16).generate()
-    val swatch = palette.vibrantSwatch
-        ?: palette.lightVibrantSwatch
+    val swatch = palette.lightVibrantSwatch
+        ?: palette.vibrantSwatch
         ?: palette.mutedSwatch
         ?: palette.dominantSwatch
-    val accent = normalizeAccent(Color(swatch?.rgb ?: 0xFF35D6C4.toInt()))
+    val accent = normalizeAccent(Color(swatch?.rgb ?: 0xFF9ED8CC.toInt()))
     CoverArt(bitmap.asImageBitmap(), accent)
 }.getOrNull()
 
@@ -200,42 +200,42 @@ private fun buildCoverArt(): CoverArt {
 
     paint.shader = LinearGradient(
         0f, 0f, size.toFloat(), size.toFloat(),
-        intArrayOf(0xFF24184E.toInt(), 0xFF4B2A7A.toInt(), 0xFF0E5F5C.toInt()),
+        intArrayOf(0xFFF1E4D6.toInt(), 0xFFD8E2F3.toInt(), 0xFFCDE9DC.toInt()),
         null,
         Shader.TileMode.CLAMP,
     )
     canvas.drawRect(0f, 0f, size.toFloat(), size.toFloat(), paint)
 
     paint.shader = null
-    paint.color = 0x33FFFFFF
+    paint.color = 0x40FFFFFF
     canvas.drawCircle(size * 0.23f, size * 0.22f, size * 0.30f, paint)
-    paint.color = 0x22FFB25C
+    paint.color = 0x30F0B98A
     canvas.drawCircle(size * 0.80f, size * 0.78f, size * 0.28f, paint)
 
     val cx = size * 0.62f
     val cy = size * 0.58f
     paint.style = Paint.Style.FILL
-    paint.color = 0xFF0B0D12.toInt()
+    paint.color = 0xFF39414F.toInt()
     canvas.drawCircle(cx, cy, size * 0.31f, paint)
     paint.style = Paint.Style.STROKE
     paint.strokeWidth = 2.5f
     for (i in 0..5) {
-        paint.color = ColorUtils.setAlphaComponent(0xFF35D6C4.toInt(), 150 - i * 20)
+        paint.color = ColorUtils.setAlphaComponent(0xFFFFFFFF.toInt(), 110 - i * 15)
         canvas.drawCircle(cx, cy, size * (0.285f - i * 0.045f), paint)
     }
     paint.style = Paint.Style.FILL
-    paint.color = 0xFF35D6C4.toInt()
+    paint.color = 0xFFBFE3D6.toInt()
     canvas.drawCircle(cx, cy, size * 0.055f, paint)
-    paint.color = 0xFF0B0D12.toInt()
+    paint.color = 0xFF39414F.toInt()
     canvas.drawCircle(cx, cy, size * 0.016f, paint)
 
     val scaled = Bitmap.createScaledBitmap(bitmap, 96, 96, true)
     val palette = Palette.from(scaled).maximumColorCount(12).generate()
-    val swatch = palette.vibrantSwatch
-        ?: palette.lightVibrantSwatch
+    val swatch = palette.lightVibrantSwatch
+        ?: palette.vibrantSwatch
         ?: palette.mutedSwatch
         ?: palette.dominantSwatch
-    val accent = normalizeAccent(Color(swatch?.rgb ?: 0xFF35D6C4.toInt()))
+    val accent = normalizeAccent(Color(swatch?.rgb ?: 0xFF9ED8CC.toInt()))
 
     return CoverArt(bitmap.asImageBitmap(), accent)
 }
@@ -243,7 +243,7 @@ private fun buildCoverArt(): CoverArt {
 private fun normalizeAccent(color: Color): Color {
     val hsl = FloatArray(3)
     ColorUtils.colorToHSL(color.toArgb(), hsl)
-    hsl[1] = hsl[1].coerceAtLeast(0.45f)
-    hsl[2] = hsl[2].coerceIn(0.58f, 0.72f)
+    hsl[1] = hsl[1].coerceIn(0.30f, 0.55f)
+    hsl[2] = hsl[2].coerceIn(0.66f, 0.78f)
     return Color(ColorUtils.HSLToColor(hsl))
 }

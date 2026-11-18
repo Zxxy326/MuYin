@@ -83,7 +83,11 @@ fun PlaylistsScreen(
     val squareLoading = accountState.squareLoading
     val gutter = if (embedded) 0.dp else 26.dp
     val railGap = if (embedded) 14.dp else 16.dp
-    val railPadding = if (embedded) PaddingValues(vertical = 6.dp) else PaddingValues(vertical = 20.dp, horizontal = 26.dp)
+    val railPadding = if (embedded) {
+        PaddingValues(horizontal = 10.dp, vertical = 18.dp)
+    } else {
+        PaddingValues(vertical = 20.dp, horizontal = 26.dp)
+    }
 
     var refreshedOnce by rememberSaveable { mutableStateOf(false) }
 
@@ -285,7 +289,7 @@ private fun PlaylistCard(
     TvSurface(
         modifier = Modifier.size(width = 150.dp, height = 188.dp),
         shape = RoundedCornerShape(16.dp),
-        baseColor = if (focused) Color.White.copy(alpha = 0.08f) else Color.Transparent,
+        baseColor = Color.Transparent,
         borderColor = Color.Transparent,
         focusedScale = 1.03f,
         glowSize = 12.dp,

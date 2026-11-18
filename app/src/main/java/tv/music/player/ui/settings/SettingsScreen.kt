@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -131,6 +132,7 @@ fun SettingsScreen(
                     LazyColumn(
                         modifier = Modifier.width(420.dp).fillMaxHeight(),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
+                        contentPadding = PaddingValues(horizontal = 6.dp),
                     ) {
                         items(groups, key = { it.id }) { info ->
                             SettingsGroupRow(
@@ -184,7 +186,7 @@ private fun SettingsGroupRow(
     TvSurface(
         modifier = Modifier.fillMaxWidth().height(68.dp),
         shape = RoundedCornerShape(14.dp),
-        baseColor = if (selected) accent.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.035f),
+        baseColor = Color.White.copy(alpha = 0.035f),
         focusedScale = 1.025f,
         glowSize = 12.dp,
         group = group,

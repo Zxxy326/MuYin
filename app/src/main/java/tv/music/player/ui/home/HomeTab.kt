@@ -421,9 +421,9 @@ fun HomeTab(
             Spacer(Modifier.height(8.dp))
             LazyRow(
                 state = railState,
-                modifier = Modifier.fillMaxWidth().height(128.dp),
+                modifier = Modifier.fillMaxWidth().height(152.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(0.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp),
             ) {
                 itemsIndexed(railTracks, key = { _, track -> track.libraryKey() }) { index, track ->
                     PosterTrackCard(
@@ -573,7 +573,7 @@ private fun PosterTrackCard(
     TvSurface(
         modifier = Modifier.width(150.dp).height(128.dp),
         shape = RoundedCornerShape(12.dp),
-        baseColor = if (focused) Color.White.copy(alpha = 0.08f) else Color.Transparent,
+        baseColor = Color.Transparent,
         focusedScale = 1.035f,
         glowSize = 14.dp,
         group = group,

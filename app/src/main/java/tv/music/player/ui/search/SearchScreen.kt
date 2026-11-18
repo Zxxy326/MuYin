@@ -954,7 +954,7 @@ private fun ResultsPanel(
         } else {
             LazyColumn(
                 state = listState,
-                contentPadding = PaddingValues(vertical = 14.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 itemsIndexed(tracks, key = { _, track -> trackKey(track) }) { index, track ->

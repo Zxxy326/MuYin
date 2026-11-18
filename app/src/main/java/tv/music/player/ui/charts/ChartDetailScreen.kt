@@ -240,7 +240,7 @@ fun ChartDetailScreen(
                     else -> LazyColumn(
                         Modifier.fillMaxWidth().weight(1f),
                         state = listState,
-                        contentPadding = PaddingValues(vertical = 14.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 14.dp),
                         verticalArrangement = Arrangement.spacedBy(7.dp),
                     ) {
                         itemsIndexed(tracks, key = { index, track -> "${track.onlineSongId}:$index" }) { index, track ->

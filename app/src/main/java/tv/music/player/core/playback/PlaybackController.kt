@@ -1,6 +1,8 @@
 package tv.music.player.core.playback
 
 import android.content.Context
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.net.Uri
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -72,6 +74,34 @@ class PlaybackController(
     private var resolveJob: Job? = null
     private var previewRetryDone = false
     private var autoRetryCount = 0
+
+    private val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    @Volatile private var appForeground = false
+    @Volatile private var focusHeld = false
+    private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
+        when (change) {
+            // 任何形式的焦点丢失都立即暂停，不做压低音量的 duck，保证不与其他应用混音。
+            AudioManager.AUDIOFOCUS_LOSS,
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                focusHeld = false
+                if (player.isPlaying || player.playWhenReady || _state.value.isPlaying) {
+                    _errors.tryEmit("其他应用开始播放声音，已暂停")
+                    pauseWithFade()
+                }
+            }
+        }
+    }
+    private val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+        .setAudioAttributes(
+            android.media.AudioAttributes.Builder()
+                .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build(),
+        )
+        .setOnAudioFocusChangeListener(focusListener)
+        .setWillPauseWhenDucked(true)
+        .build()
 
     private val httpDataSourceFactory = DefaultHttpDataSource.Factory()
         .setUserAgent(HTTP_UA)
@@ -224,6 +254,40 @@ class PlaybackController(
         }
     }
 
+    /** 应用是否处于前台；退到后台立即暂停，且拒绝任何后台起播。 */
+    fun setAppForeground(foreground: Boolean) {
+        appForeground = foreground
+        if (!foreground) {
+            pauseWithFade()
+            abandonAudioFocus()
+        }
+    }
+
+    fun requestPlayFromSession() {
+        if (!ensureAudioFocus()) return
+        if (!player.isPlaying && player.mediaItemCount > 0) {
+            if (player.playbackState == Player.STATE_IDLE) player.prepare()
+            player.play()
+            fadeIn()
+        }
+    }
+
+    private fun ensureAudioFocus(): Boolean {
+        if (!appForeground) return false
+        if (focusHeld) return true
+        val granted = audioManager.requestAudioFocus(focusRequest) ==
+            AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        focusHeld = granted
+        if (!granted) _errors.tryEmit("其他应用正在播放声音，已暂停播放")
+        return granted
+    }
+
+    private fun abandonAudioFocus() {
+        if (!focusHeld) return
+        focusHeld = false
+        audioManager.abandonAudioFocusRequest(focusRequest)
+    }
+
     fun toggle() {
         val snapshot = _state.value
         if (snapshot.track.usesPlayer) {
@@ -235,6 +299,7 @@ class PlaybackController(
             } else if (player.isPlaying) {
                 pauseWithFade()
             } else {
+                if (!ensureAudioFocus()) return
                 player.play()
                 fadeIn()
             }
@@ -250,6 +315,7 @@ class PlaybackController(
         queue: List<DemoTrack> = _state.value.queue,
         startPositionMs: Long = 0L,
     ) {
+        if (!ensureAudioFocus()) return
         resolveJob?.cancel()
         previewRetryDone = false
         autoRetryCount = 0
@@ -344,6 +410,10 @@ class PlaybackController(
 
     private fun startMedia(track: DemoTrack, url: String, startPositionMs: Long = 0L) {
         applyAudioBehavior()
+        if (!ensureAudioFocus()) {
+            _state.value = _state.value.copy(isPlaying = false, buffering = false)
+            return
+        }
         player.setMediaItem(buildMediaItem(track, url))
         player.prepare()
         if (startPositionMs > 0L) player.seekTo(startPositionMs)
@@ -361,6 +431,10 @@ class PlaybackController(
 
     private fun startLocalUri(track: DemoTrack, uri: String, startPositionMs: Long = 0L) {
         applyAudioBehavior()
+        if (!ensureAudioFocus()) {
+            _state.value = _state.value.copy(isPlaying = false, buffering = false)
+            return
+        }
         player.stop()
         player.clearMediaItems()
         player.setMediaItem(buildMediaItem(track, uri))
@@ -375,12 +449,13 @@ class PlaybackController(
     }
 
     private fun applyAudioBehavior() {
+        // 焦点由 PlaybackController 统一管理：丢焦即暂停，不 duck、不混音。
         player.setAudioAttributes(
             AudioAttributes.Builder()
                 .setUsage(C.USAGE_MEDIA)
                 .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
                 .build(),
-            settingsProvider().audioFocus,
+            false,
         )
     }
 
@@ -404,6 +479,7 @@ class PlaybackController(
     }
 
     private fun pauseWithFade() {
+        abandonAudioFocus()
         fadeJob?.cancel()
         if (!settingsProvider().fadeInOut) {
             player.volume = 1f

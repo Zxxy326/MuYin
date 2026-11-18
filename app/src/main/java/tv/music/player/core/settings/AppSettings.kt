@@ -62,6 +62,5 @@ data class AppSettings(
     val quality: AudioQuality = AudioQuality.HIGH,
     val gaplessPlayback: Boolean = true,
     val fadeInOut: Boolean = false,
-    val audioFocus: Boolean = true,
     val companionEnabled: Boolean = false,
 )

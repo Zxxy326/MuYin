@@ -56,6 +56,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        (application as TvMusicApplication).container.playback.setAppForeground(true)
+    }
+
+    override fun onStop() {
+        (application as TvMusicApplication).container.playback.setAppForeground(false)
+        super.onStop()
+    }
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) hideSystemBars()

@@ -2334,7 +2334,7 @@ private fun QueuePanel(
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 state = listState,
-                contentPadding = PaddingValues(vertical = 14.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 itemsIndexed(snapshot.queue, key = { _, track -> track.id }) { index, track ->

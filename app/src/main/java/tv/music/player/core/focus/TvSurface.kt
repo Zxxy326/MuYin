@@ -23,7 +23,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -43,7 +42,8 @@ import tv.music.player.core.theme.TvColors
 
 /**
  * TV 焦点容器的统一实现：
- * 焦点态 1.08× 缩放、3dp 主题色描边、16dp 同色外发光，失焦 200ms 回落（120ms 进入）。
+ * 焦点态缩放、主题色描边、外发光，失焦回落。
+ * 不使用 elevation 阴影：阴影会透过半透明底色在焦点框内形成一圈叠影。
  */
 @Composable
 fun TvSurface(
@@ -88,15 +88,6 @@ fun TvSurface(
             tween(0)
         },
         label = "focus-glow",
-    )
-    val elevation by animateDpAsState(
-        targetValue = if (focused) 14.dp else 0.dp,
-        animationSpec = if (animations) {
-            spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium)
-        } else {
-            tween(0)
-        },
-        label = "focus-elevation",
     )
     val borderWidth by animateDpAsState(
         targetValue = if (focused) focusedBorderWidth else 1.dp,
@@ -143,7 +134,6 @@ fun TvSurface(
                 scaleX = scale
                 scaleY = scale
             }
-            .shadow(elevation, shape, clip = false)
             .drawBehind {
                 if (glowPx <= 0f) return@drawBehind
                 val outline = shape.createOutline(size, layoutDirection, this)
