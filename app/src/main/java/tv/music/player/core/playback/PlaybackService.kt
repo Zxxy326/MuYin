@@ -19,9 +19,11 @@ class PlaybackService : MediaSessionService() {
         val sessionPlayer = object : ForwardingPlayer(playback.player) {
             override fun play() = playback.requestPlayFromSession()
 
+            override fun pause() = playback.pauseFromSession()
+
             override fun setPlayWhenReady(playWhenReady: Boolean) {
                 if (playWhenReady) playback.requestPlayFromSession()
-                else super.setPlayWhenReady(false)
+                else playback.pauseFromSession()
             }
 
             override fun seekToNext() = playback.next()

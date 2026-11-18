@@ -272,6 +272,10 @@ class PlaybackController(
         }
     }
 
+    fun pauseFromSession() {
+        pauseWithFade()
+    }
+
     private fun ensureAudioFocus(): Boolean {
         if (!appForeground) return false
         if (focusHeld) return true
