@@ -245,10 +245,15 @@ fun QueueRow(
                 else -> ""
             }
             if (sourceLabel.isNotEmpty()) {
+                val sourceColor = when (track.onlineSource) {
+                    "kw" -> Color(0xFFFF7A00)
+                    "kg" -> Color(0xFF2E7CF6)
+                    else -> TvColors.TextTertiary
+                }
                 Text(
                     sourceLabel,
                     style = TvType.caption.copy(fontSize = 10.sp),
-                    color = TvColors.TextTertiary,
+                    color = sourceColor,
                     modifier = Modifier.padding(end = 8.dp),
                 )
             }

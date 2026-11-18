@@ -58,6 +58,7 @@ class PlaybackController(
     smbFactory: DataSource.Factory? = null,
     private val settingsProvider: () -> AppSettings = { AppSettings() },
     private val sourcesProvider: () -> List<String> = { emptyList() },
+    private val persistence: PlaybackPersistence? = null,
 ) {
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -165,13 +166,72 @@ class PlaybackController(
                 _errors.tryEmit("播放失败：${error.errorCodeName}")
             }
         })
+        restoreSaved()
+        startPersistence()
+    }
+
+    private fun restoreSaved() {
+        val saved = persistence?.load() ?: return
+        if (!saved.track.usesPlayer) return
+        _state.value = _state.value.copy(
+            track = saved.track,
+            queue = saved.queue,
+            positionMs = saved.positionMs,
+            resolvedDurationMs = saved.track.durationMs,
+            isPlaying = false,
+            buffering = false,
+        )
+    }
+
+    private fun startPersistence() {
+        val store = persistence ?: return
+        scope.launch {
+            var lastKey: String? = null
+            var lastQueue: List<DemoTrack>? = null
+            var lastPos = -1L
+            var lastPlaying = false
+            var lastAt = 0L
+            _state.collect { snapshot ->
+                if (!snapshot.track.usesPlayer) return@collect
+                val key = buildString {
+                    append(snapshot.track.onlineSource)
+                    append(':')
+                    append(snapshot.track.onlineSongId)
+                    append(':')
+                    append(snapshot.track.id)
+                    append(':')
+                    append(snapshot.track.localUri)
+                }
+                val now = android.os.SystemClock.elapsedRealtime()
+                val trackChanged = key != lastKey || snapshot.queue !== lastQueue
+                val pauseEdge = lastPlaying && !snapshot.isPlaying
+                val moved = kotlin.math.abs(snapshot.positionMs - lastPos) >= 1_000L
+                val due = now - lastAt >= 5_000L
+                if (trackChanged || pauseEdge || (due && moved)) {
+                    val savedTrack = snapshot.track
+                    val savedQueue = snapshot.queue
+                    val savedPosition = snapshot.positionMs
+                    scope.launch(Dispatchers.IO) {
+                        store.save(savedTrack, savedQueue, savedPosition)
+                    }
+                    lastKey = key
+                    lastQueue = snapshot.queue
+                    lastPos = snapshot.positionMs
+                    lastAt = now
+                }
+                lastPlaying = snapshot.isPlaying
+            }
+        }
     }
 
     fun toggle() {
         val snapshot = _state.value
         if (snapshot.track.usesPlayer) {
             if (player.playbackState == Player.STATE_IDLE || player.mediaItemCount == 0) {
-                play(snapshot.track, snapshot.queue)
+                val resume = snapshot.positionMs.takeIf {
+                    it >= 1_000L && it < snapshot.durationMs - 1_500L
+                } ?: 0L
+                play(snapshot.track, snapshot.queue, startPositionMs = resume)
             } else if (player.isPlaying) {
                 pauseWithFade()
             } else {
@@ -185,7 +245,11 @@ class PlaybackController(
         if (playing) startTicker() else stopTicker()
     }
 
-    fun play(track: DemoTrack, queue: List<DemoTrack> = _state.value.queue) {
+    fun play(
+        track: DemoTrack,
+        queue: List<DemoTrack> = _state.value.queue,
+        startPositionMs: Long = 0L,
+    ) {
         resolveJob?.cancel()
         previewRetryDone = false
         autoRetryCount = 0
@@ -195,17 +259,17 @@ class PlaybackController(
         _state.value = _state.value.copy(
             track = track,
             queue = queue,
-            positionMs = 0L,
+            positionMs = startPositionMs.coerceAtLeast(0L),
             resolvedDurationMs = 0L,
             buffering = track.isOnline && localFile == null && localUri == null,
             isPlaying = false,
         )
         if (localUri != null) {
-            startLocalUri(track, localUri)
+            startLocalUri(track, localUri, startPositionMs)
             return
         }
         if (localFile != null) {
-            startLocalFile(track, localFile)
+            startLocalFile(track, localFile, startPositionMs)
             return
         }
         if (!track.isOnline) {
@@ -234,7 +298,7 @@ class PlaybackController(
                 _errors.tryEmit("未找到可用音源，请换一首或检查音源脚本")
                 return@launch
             }
-            startMedia(track, url)
+            startMedia(track, url, startPositionMs)
         }
     }
 
@@ -278,10 +342,11 @@ class PlaybackController(
         }
     }
 
-    private fun startMedia(track: DemoTrack, url: String) {
+    private fun startMedia(track: DemoTrack, url: String, startPositionMs: Long = 0L) {
         applyAudioBehavior()
         player.setMediaItem(buildMediaItem(track, url))
         player.prepare()
+        if (startPositionMs > 0L) player.seekTo(startPositionMs)
         player.playWhenReady = true
         fadeIn()
         _state.value = _state.value.copy(buffering = false)
@@ -290,16 +355,17 @@ class PlaybackController(
         prefetchNext(track)
     }
 
-    private fun startLocalFile(track: DemoTrack, file: File) {
-        startLocalUri(track, Uri.fromFile(file).toString())
+    private fun startLocalFile(track: DemoTrack, file: File, startPositionMs: Long = 0L) {
+        startLocalUri(track, Uri.fromFile(file).toString(), startPositionMs)
     }
 
-    private fun startLocalUri(track: DemoTrack, uri: String) {
+    private fun startLocalUri(track: DemoTrack, uri: String, startPositionMs: Long = 0L) {
         applyAudioBehavior()
         player.stop()
         player.clearMediaItems()
         player.setMediaItem(buildMediaItem(track, uri))
         player.prepare()
+        if (startPositionMs > 0L) player.seekTo(startPositionMs)
         player.playWhenReady = true
         fadeIn()
         _state.value = _state.value.copy(buffering = false, isPlaying = true)

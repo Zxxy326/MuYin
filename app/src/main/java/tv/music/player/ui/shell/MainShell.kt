@@ -71,6 +71,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -84,6 +86,7 @@ import tv.music.player.core.focus.rememberTvFocusGroup
 import tv.music.player.core.library.LibraryStore
 import tv.music.player.core.library.libraryKey
 import tv.music.player.core.lyrics.LyricsRepository
+import tv.music.player.core.playback.DemoCatalog
 import tv.music.player.core.playback.DemoTrack
 import tv.music.player.core.playback.PlaybackController
 import tv.music.player.core.search.OnlineSearchApi
@@ -96,6 +99,13 @@ import tv.music.player.core.theme.rememberCoverArt
 import tv.music.player.core.weather.WeatherKind
 import tv.music.player.core.weather.WeatherRepository
 import tv.music.player.core.weather.WeatherSnapshot
+import tv.music.player.ui.components.StageBackdrop
+import tv.music.player.ui.components.StageGlass
+import tv.music.player.ui.components.StageGlassSoft
+import tv.music.player.ui.components.StageHeading
+import tv.music.player.ui.components.StageTextSecondary
+import tv.music.player.ui.components.StageTextShadow
+import tv.music.player.ui.components.StageTextTertiary
 import tv.music.player.ui.components.TrackArtwork
 import tv.music.player.ui.components.TvBackdrop
 import tv.music.player.ui.components.TvIcon
@@ -142,6 +152,14 @@ fun MainShell(
             delay(30 * 60_000L)
         }
     }
+    val recent by library.recent.collectAsStateWithLifecycle()
+    val stageTrack by produceState<DemoTrack?>(initialValue = null, playback, recent) {
+        playback.state
+            .map { state -> state.track.takeIf { it.usesPlayer } }
+            .distinctUntilChanged()
+            .collect { playing -> value = playing ?: recent.firstOrNull() ?: DemoCatalog.tracks.first() }
+    }
+    val chartsCache = remember { mutableMapOf<Int, List<DemoTrack>>() }
 
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var section by remember { mutableStateOf(ShellSection.Top) }
@@ -150,8 +168,7 @@ fun MainShell(
         shellGroup.focus("shell:${index.coerceIn(0, ShellTabs.lastIndex)}")
     }
 
-    fun enterPage() {
-        val index = tab
+    fun enterPage(index: Int = tab) {
         scope.launch {
             val ok = when (index) {
                 0 -> homeGroup.focusWhenReady("hero:play", 500L)
@@ -209,7 +226,11 @@ fun MainShell(
     }
 
     Box(Modifier.fillMaxSize().onPreviewKeyEvent { handleKey(it) }) {
-        TvBackdrop()
+        if (tab == 0) {
+            TvBackdrop()
+        } else {
+            StageBackdrop(stageTrack, dim = 0.58f)
+        }
         Box(
             Modifier
                 .fillMaxSize()
@@ -220,6 +241,7 @@ fun MainShell(
                     HomeTab(
                         playback = playback,
                         library = library,
+                        account = account,
                         lyricsRepository = lyricsRepository,
                         lyricOffsetMs = lyricOffsetMs,
                         navController = navController,
@@ -250,7 +272,7 @@ fun MainShell(
                 }
                 3 -> holder.SaveableStateProvider("charts") {
                     Box(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 68.dp)) {
-                        ChartsTab(charts, playback, navController)
+                        ChartsTab(charts, playback, navController, chartsCache)
                     }
                 }
                 else -> holder.SaveableStateProvider("more") {
@@ -269,7 +291,7 @@ fun MainShell(
             clock = clock,
             weather = weather,
             onTabFocused = { tab = it },
-            onTabSelected = { tab = it },
+            onTabSelected = { tab = it; enterPage(it) },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp, vertical = 8.dp)
@@ -429,17 +451,33 @@ private fun ChartsTab(
     charts: ChartRepository,
     playback: PlaybackController,
     navController: NavHostController,
+    cache: MutableMap<Int, List<DemoTrack>>,
 ) {
     val group = rememberTvFocusGroup("charts")
     var selected by rememberSaveable { mutableIntStateOf(0) }
-    var tracks by remember { mutableStateOf<List<DemoTrack>>(emptyList()) }
-    var loading by remember { mutableStateOf(false) }
+    var tracks by remember { mutableStateOf(cache[selected] ?: emptyList()) }
+    var loading by remember { mutableStateOf(cache[selected] == null) }
     val accent = LocalTvAccent.current
 
     LaunchedEffect(selected) {
+        val cached = cache[selected]
+        if (cached != null) {
+            tracks = cached
+            loading = false
+            return@LaunchedEffect
+        }
         loading = true
-        tracks = runCatching { charts.load(Charts.all[selected]).tracks }.getOrDefault(emptyList())
+        val loaded = runCatching { charts.load(Charts.all[selected]).tracks }.getOrDefault(emptyList())
+        if (loaded.isNotEmpty()) cache[selected] = loaded
+        tracks = loaded
         loading = false
+    }
+    LaunchedEffect(Unit) {
+        for (index in Charts.all.indices) {
+            if (index == selected || cache[index] != null) continue
+            val loaded = runCatching { charts.load(Charts.all[index]).tracks }.getOrNull() ?: continue
+            if (loaded.isNotEmpty()) cache[index] = loaded
+        }
     }
 
     fun play(track: DemoTrack) {
@@ -448,26 +486,7 @@ private fun ChartsTab(
     }
 
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().height(44.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column {
-                Text(
-                    "榜单",
-                    style = TextStyle(
-                        fontFamily = TvFonts.family,
-                        fontSize = 24.sp,
-                        lineHeight = 28.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.3).sp,
-                    ),
-                    color = TvColors.TextPrimary,
-                )
-                Text(
-                    "焦点切榜 · 内容原地更新",
-                    style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
-                    color = TvColors.TextSecondary,
-                )
-            }
-            Spacer(Modifier.weight(1f))
+        StageHeading("CHARTS", "榜单", "焦点切榜 · 内容原地更新") {
             TvSurface(
                 modifier = Modifier.height(36.dp),
                 shape = RoundedCornerShape(14.dp),
@@ -496,14 +515,15 @@ private fun ChartsTab(
                 }
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(6.dp))
         Row(Modifier.fillMaxWidth().height(58.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Charts.all.forEachIndexed { index, chart ->
                 val active = selected == index
                 TvSurface(
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                     shape = RoundedCornerShape(16.dp),
-                    baseColor = if (active) accent.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.035f),
+                    baseColor = if (active) accent.copy(alpha = 0.14f) else StageGlassSoft,
+                    borderColor = Color.White.copy(alpha = 0.07f),
                     focusedScale = 1.015f,
                     glowSize = 10.dp,
                     group = group,
@@ -522,8 +542,9 @@ private fun ChartsTab(
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFeatureSettings = "tnum",
+                                shadow = StageTextShadow,
                             ),
-                            color = if (active) accent.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.18f),
+                            color = if (active) accent.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.24f),
                         )
                         Spacer(Modifier.width(10.dp))
                         Column {
@@ -533,15 +554,20 @@ private fun ChartsTab(
                                     fontFamily = TvFonts.family,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.SemiBold,
+                                    shadow = StageTextShadow,
                                 ),
-                                color = if (active) accent else TvColors.TextPrimary,
+                                color = if (active) accent else Color.White.copy(alpha = 0.88f),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
                             Text(
                                 chart.providerLabel(),
-                                style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.sp),
-                                color = TvColors.TextSecondary,
+                                style = TextStyle(
+                                    fontFamily = TvFonts.family,
+                                    fontSize = 10.sp,
+                                    shadow = StageTextShadow,
+                                ),
+                                color = StageTextSecondary,
                                 maxLines = 1,
                             )
                         }
@@ -549,7 +575,7 @@ private fun ChartsTab(
                 }
             }
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth().height(28.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 Charts.all[selected].name,
@@ -557,14 +583,15 @@ private fun ChartsTab(
                     fontFamily = TvFonts.family,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
+                    shadow = StageTextShadow,
                 ),
-                color = TvColors.TextPrimary,
+                color = Color.White,
             )
             Spacer(Modifier.width(8.dp))
             Text(
                 if (loading) "加载中…" else "共 ${tracks.size} 首",
-                style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
-                color = TvColors.TextTertiary,
+                style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp, shadow = StageTextShadow),
+                color = StageTextTertiary,
             )
             Spacer(Modifier.weight(1f))
             Text(
@@ -573,8 +600,9 @@ private fun ChartsTab(
                     fontFamily = TvFonts.family,
                     fontSize = 10.sp,
                     letterSpacing = 0.6.sp,
+                    shadow = StageTextShadow,
                 ),
-                color = TvColors.TextTertiary,
+                color = StageTextTertiary,
             )
         }
         Spacer(Modifier.height(6.dp))
@@ -583,7 +611,7 @@ private fun ChartsTab(
             verticalArrangement = Arrangement.spacedBy(4.dp),
             contentPadding = PaddingValues(bottom = 4.dp),
         ) {
-            itemsIndexed(tracks) { index, track ->
+            itemsIndexed(tracks, key = { _, track -> track.libraryKey() }) { index, track ->
                 ChartTrackRow(
                     index = index,
                     track = track,
@@ -606,8 +634,9 @@ private fun ChartTrackRow(
     val accent = LocalTvAccent.current
     TvSurface(
         modifier = Modifier.fillMaxWidth().height(44.dp),
-        shape = RoundedCornerShape(12.dp),
-        baseColor = if (focused) accent.copy(alpha = 0.08f) else Color.Transparent,
+        shape = RoundedCornerShape(14.dp),
+        baseColor = if (focused) accent.copy(alpha = 0.1f) else Color.Transparent,
+        borderColor = Color.Transparent,
         focusedScale = 1f,
         focusedBorderWidth = 2.dp,
         glowSize = 6.dp,
@@ -627,8 +656,9 @@ private fun ChartTrackRow(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFeatureSettings = "tnum",
+                    shadow = StageTextShadow,
                 ),
-                color = if (focused) accent else TvColors.TextTertiary,
+                color = if (focused) accent else StageTextTertiary,
                 modifier = Modifier.width(26.dp),
             )
             TrackArtwork(track = track, modifier = Modifier.size(28.dp), corner = 6.dp)
@@ -641,15 +671,21 @@ private fun ChartTrackRow(
                         fontSize = 13.5.sp,
                         lineHeight = 17.sp,
                         fontWeight = FontWeight.SemiBold,
+                        shadow = StageTextShadow,
                     ),
-                    color = TvColors.TextPrimary,
+                    color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     track.artist,
-                    style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.5.sp, lineHeight = 14.sp),
-                    color = TvColors.TextSecondary,
+                    style = TextStyle(
+                        fontFamily = TvFonts.family,
+                        fontSize = 10.5.sp,
+                        lineHeight = 14.sp,
+                        shadow = StageTextShadow,
+                    ),
+                    color = StageTextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -661,8 +697,9 @@ private fun ChartTrackRow(
                     fontSize = 10.5.sp,
                     fontWeight = FontWeight.Medium,
                     fontFeatureSettings = "tnum",
+                    shadow = StageTextShadow,
                 ),
-                color = TvColors.TextTertiary,
+                color = StageTextTertiary,
             )
         }
     }
@@ -706,33 +743,18 @@ private fun MoreTab(account: AccountStore, navController: NavHostController) {
     )
 
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().height(44.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column {
-                Text(
-                    "更多",
-                    style = TextStyle(
-                        fontFamily = TvFonts.family,
-                        fontSize = 24.sp,
-                        lineHeight = 28.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.3).sp,
-                    ),
-                    color = TvColors.TextPrimary,
-                )
-                Text(
-                    "账号、音源、收藏与设备",
-                    style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
-                    color = TvColors.TextSecondary,
-                )
-            }
-            Spacer(Modifier.weight(1f))
+        StageHeading("MORE", "更多", "账号、音源、收藏与设备") {
             Text(
                 if (connected) "${accountState.playlists.size} 个歌单已同步" else "未登录也能本地播放",
-                style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
-                color = TvColors.TextTertiary,
+                style = TextStyle(
+                    fontFamily = TvFonts.family,
+                    fontSize = 10.5.sp,
+                    shadow = StageTextShadow,
+                ),
+                color = StageTextTertiary,
             )
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(10.dp))
         Row(
             Modifier.fillMaxWidth().height(206.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -740,12 +762,8 @@ private fun MoreTab(account: AccountStore, navController: NavHostController) {
             Box(
                 Modifier.width(280.dp).fillMaxHeight()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.White.copy(alpha = 0.06f), Color.White.copy(alpha = 0.02f))
-                        )
-                    )
-                    .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(16.dp))
+                    .background(StageGlass)
+                    .border(1.dp, Color.White.copy(alpha = 0.07f), RoundedCornerShape(16.dp))
                     .padding(18.dp)
             ) {
                 Column(Modifier.fillMaxSize()) {
@@ -785,8 +803,9 @@ private fun MoreTab(account: AccountStore, navController: NavHostController) {
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     letterSpacing = 1.6.sp,
+                                    shadow = StageTextShadow,
                                 ),
-                                color = TvColors.TextTertiary,
+                                color = StageTextTertiary,
                             )
                             Spacer(Modifier.height(2.dp))
                             Text(
@@ -796,8 +815,9 @@ private fun MoreTab(account: AccountStore, navController: NavHostController) {
                                     fontSize = 18.sp,
                                     lineHeight = 22.sp,
                                     fontWeight = FontWeight.SemiBold,
+                                    shadow = StageTextShadow,
                                 ),
-                                color = TvColors.TextPrimary,
+                                color = Color.White,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -807,20 +827,25 @@ private fun MoreTab(account: AccountStore, navController: NavHostController) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             Modifier.size(6.dp).clip(CircleShape)
-                                .background(if (connected) accent else TvColors.TextTertiary)
+                                .background(if (connected) accent else Color.White.copy(alpha = 0.32f))
                         )
                         Spacer(Modifier.width(7.dp))
                         Text(
                             connectLabel,
-                            style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
-                            color = TvColors.TextSecondary,
+                            style = TextStyle(
+                                fontFamily = TvFonts.family,
+                                fontSize = 11.sp,
+                                shadow = StageTextShadow,
+                            ),
+                            color = StageTextSecondary,
                         )
                     }
                     Spacer(Modifier.weight(1f))
                     TvSurface(
                         modifier = Modifier.fillMaxWidth().height(36.dp),
                         shape = RoundedCornerShape(12.dp),
-                        baseColor = Color.White.copy(alpha = 0.075f),
+                        baseColor = StageGlassSoft,
+                        borderColor = Color.White.copy(alpha = 0.12f),
                         focusedScale = 1.02f,
                         glowSize = 8.dp,
                         group = group,
@@ -839,14 +864,15 @@ private fun MoreTab(account: AccountStore, navController: NavHostController) {
                                     fontFamily = TvFonts.family,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
+                                    shadow = StageTextShadow,
                                 ),
-                                color = TvColors.TextPrimary,
+                                color = Color.White,
                             )
                             Spacer(Modifier.weight(1f))
                             TvIcon(
                                 Icons.Rounded.ChevronRight,
                                 Modifier.size(15.dp),
-                                tint = TvColors.TextTertiary,
+                                tint = StageTextTertiary,
                             )
                         }
                     }
@@ -877,8 +903,12 @@ private fun MoreTab(account: AccountStore, navController: NavHostController) {
         Spacer(Modifier.weight(1f))
         Text(
             "方向键移动焦点 · OK 进入 · 返回键回到顶栏",
-            style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
-            color = TvColors.TextTertiary,
+            style = TextStyle(
+                fontFamily = TvFonts.family,
+                fontSize = 11.sp,
+                shadow = StageTextShadow,
+            ),
+            color = StageTextTertiary,
         )
     }
 }
@@ -894,7 +924,8 @@ private fun MoreToolCard(
     TvSurface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        baseColor = Color.White.copy(alpha = 0.035f),
+        baseColor = StageGlass,
+        borderColor = Color.White.copy(alpha = 0.07f),
         focusedScale = 1.02f,
         glowSize = 10.dp,
         group = group,
@@ -922,14 +953,20 @@ private fun MoreToolCard(
                         fontSize = 15.sp,
                         lineHeight = 19.sp,
                         fontWeight = FontWeight.SemiBold,
+                        shadow = StageTextShadow,
                     ),
-                    color = TvColors.TextPrimary,
+                    color = Color.White,
                     maxLines = 1,
                 )
                 Text(
                     entry.hint,
-                    style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.5.sp, lineHeight = 14.sp),
-                    color = TvColors.TextSecondary,
+                    style = TextStyle(
+                        fontFamily = TvFonts.family,
+                        fontSize = 10.5.sp,
+                        lineHeight = 14.sp,
+                        shadow = StageTextShadow,
+                    ),
+                    color = StageTextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -937,7 +974,7 @@ private fun MoreToolCard(
             TvIcon(
                 Icons.Rounded.ChevronRight,
                 Modifier.size(16.dp),
-                tint = TvColors.TextTertiary,
+                tint = StageTextTertiary,
             )
         }
     }

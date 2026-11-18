@@ -147,8 +147,8 @@ fun TvSurface(
             .drawBehind {
                 if (glowPx <= 0f) return@drawBehind
                 val outline = shape.createOutline(size, layoutDirection, this)
-                val steps = 6
-                val stroke = glowPx / 5f
+                val steps = 4
+                val stroke = glowPx / 4f
                 for (i in 1..steps) {
                     val progress = (i - 0.5f) / steps
                     val color = glowColor.copy(alpha = 0.11f * (1f - progress) + 0.012f)

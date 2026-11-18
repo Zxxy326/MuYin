@@ -20,7 +20,7 @@ fun TrackArtwork(
     corner: Dp = 12.dp,
     circular: Boolean = false,
 ) {
-    val cover = rememberTrackCoverArt(track)
+    val cover = rememberTrackCoverArt(track, maxSize = 320, needAccent = false)
     Image(
         bitmap = cover.image,
         contentDescription = null,

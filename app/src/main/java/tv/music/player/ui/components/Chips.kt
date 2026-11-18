@@ -95,7 +95,8 @@ fun ActionChip(
     TvSurface(
         modifier = modifier.height(34.dp),
         shape = RoundedCornerShape(50),
-        baseColor = if (primary) Color(0xFFF2F4F8) else Color.White.copy(alpha = 0.05f),
+        baseColor = if (primary) Color(0xFFF2F4F8) else Color(0xFF05060A).copy(alpha = 0.45f),
+        borderColor = if (primary) TvColors.Divider else Color.White.copy(alpha = 0.1f),
         focusedScale = 1.05f,
         glowSize = 12.dp,
         focusedBorderColor = if (primary) accent else null,
@@ -115,14 +116,14 @@ fun ActionChip(
                 TvIcon(
                     icon,
                     Modifier.size(15.dp),
-                    tint = if (primary) Color(0xFF08090E) else TvColors.TextSecondary,
+                    tint = if (primary) Color(0xFF08090E) else Color.White.copy(alpha = 0.8f),
                 )
                 Spacer(Modifier.width(7.dp))
             }
             Text(
                 text = label,
                 style = TvType.caption,
-                color = if (primary) Color(0xFF08090E) else TvColors.TextSecondary,
+                color = if (primary) Color(0xFF08090E) else Color.White.copy(alpha = 0.84f),
                 maxLines = 1,
             )
         }

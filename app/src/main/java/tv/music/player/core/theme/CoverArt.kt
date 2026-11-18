@@ -39,31 +39,46 @@ class CoverArt(val image: ImageBitmap, val accent: Color)
 /** 封面缺失时由音源 JS pic 动作补全（对齐上游 v1.7.2）。 */
 val LocalTrackPicProvider = compositionLocalOf<(suspend (DemoTrack) -> String?)?> { null }
 
-private val coverCache = object : LruCache<String, CoverArt>(16) {}
+private val coverCache = object : LruCache<String, CoverArt>(12) {}
+private val thumbCache = object : LruCache<String, CoverArt>(64) {}
 private val fallbackCoverArt: CoverArt by lazy { buildCoverArt() }
+
+private fun cacheFor(maxSize: Int): LruCache<String, CoverArt> =
+    if (maxSize >= 480) coverCache else thumbCache
+
+private fun cacheKey(url: String, maxSize: Int, needAccent: Boolean): String =
+    "$maxSize|${if (needAccent) 1 else 0}|$url"
 private val coverClient = OkHttpClient.Builder()
     .connectTimeout(8, TimeUnit.SECONDS)
     .readTimeout(12, TimeUnit.SECONDS)
     .build()
 
 @Composable
-fun rememberCoverArt(url: String? = null): CoverArt {
+fun rememberCoverArt(
+    url: String? = null,
+    maxSize: Int = 960,
+    needAccent: Boolean = true,
+): CoverArt {
     val fallback = fallbackCoverArt
     val context = LocalContext.current.applicationContext
-    var art by remember(url) { mutableStateOf(url?.let(coverCache::get) ?: fallback) }
-    LaunchedEffect(url) {
+    val cache = cacheFor(maxSize)
+    var art by remember(url, maxSize, needAccent) {
+        mutableStateOf(url?.let { cache.get(cacheKey(it, maxSize, needAccent)) } ?: fallback)
+    }
+    LaunchedEffect(url, maxSize, needAccent) {
         val target = url?.trim().orEmpty()
         if (target.isBlank()) {
             art = fallback
             return@LaunchedEffect
         }
-        coverCache.get(target)?.let {
+        val key = cacheKey(target, maxSize, needAccent)
+        cache.get(key)?.let {
             art = it
             return@LaunchedEffect
         }
-        val loaded = withContext(Dispatchers.IO) { loadCover(context, target) }
+        val loaded = withContext(Dispatchers.IO) { loadCover(context, target, maxSize, needAccent) }
         if (loaded != null) {
-            coverCache.put(target, loaded)
+            cache.put(key, loaded)
             art = loaded
         }
     }
@@ -71,7 +86,11 @@ fun rememberCoverArt(url: String? = null): CoverArt {
 }
 
 @Composable
-fun rememberTrackCoverArt(track: DemoTrack): CoverArt {
+fun rememberTrackCoverArt(
+    track: DemoTrack,
+    maxSize: Int = 960,
+    needAccent: Boolean = true,
+): CoverArt {
     val provider = LocalTrackPicProvider.current
     var url by remember(track.id, track.artworkUrl) { mutableStateOf(track.artworkUrl) }
     LaunchedEffect(track.id, track.artworkUrl) {
@@ -80,18 +99,17 @@ fun rememberTrackCoverArt(track: DemoTrack): CoverArt {
             if (!pic.isNullOrBlank()) url = pic
         }
     }
-    return rememberCoverArt(url)
+    return rememberCoverArt(url, maxSize, needAccent)
 }
 
-private fun loadCover(context: Context, url: String): CoverArt? = runCatching {
+private fun loadCover(context: Context, url: String, maxSize: Int, needAccent: Boolean): CoverArt? = runCatching {
     val decoded = if (url.startsWith("content://") || url.startsWith("file://")) {
         decodeLocal(context, url)
     } else {
         decodeHttp(url)
     } ?: return null
-    val maxDim = 960
-    val bitmap = if (decoded.width > maxDim || decoded.height > maxDim) {
-        val ratio = maxDim.toFloat() / maxOf(decoded.width, decoded.height)
+    val bitmap = if (decoded.width > maxSize || decoded.height > maxSize) {
+        val ratio = maxSize.toFloat() / maxOf(decoded.width, decoded.height)
         Bitmap.createScaledBitmap(
             decoded,
             (decoded.width * ratio).toInt().coerceAtLeast(1),
@@ -101,7 +119,11 @@ private fun loadCover(context: Context, url: String): CoverArt? = runCatching {
     } else {
         decoded
     }
-    val scaled = Bitmap.createScaledBitmap(bitmap, 96, 96, true)
+    if (!needAccent) {
+        return CoverArt(bitmap.asImageBitmap(), fallbackCoverArt.accent)
+    }
+    val paletteSize = 96
+    val scaled = Bitmap.createScaledBitmap(bitmap, paletteSize, paletteSize, true)
     val palette = Palette.from(scaled).maximumColorCount(16).generate()
     val swatch = palette.vibrantSwatch
         ?: palette.lightVibrantSwatch

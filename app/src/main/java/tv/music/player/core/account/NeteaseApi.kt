@@ -259,9 +259,15 @@ class NeteaseApi {
             .header("User-Agent", UA)
             .post(body)
             .build()
-        client.newCall(request).execute().use { resp ->
-            val text = resp.body.string()
-            return runCatching { JSONObject(text) }.getOrElse { throw IOException("网易云返回了无法解析的响应") }
+        return withRetry {
+            client.newCall(request).execute().use { resp ->
+                if (!resp.isSuccessful) {
+                    val code = resp.code
+                    throw IOException(httpError(code))
+                }
+                val text = resp.body.string()
+                runCatching { JSONObject(text) }.getOrElse { throw IOException("网易云返回了无法解析的响应") }
+            }
         }
     }
 
@@ -379,7 +385,7 @@ class NeteaseApi {
         }
     }
 
-    private fun execute(url: HttpUrl, cookies: Map<String, String>) =
+    private fun execute(url: HttpUrl, cookies: Map<String, String>) = withRetry {
         client.newCall(
             Request.Builder()
                 .url(url)
@@ -392,10 +398,38 @@ class NeteaseApi {
             if (!response.isSuccessful) {
                 val code = response.code
                 response.close()
-                throw IOException("网易云请求失败：HTTP $code")
+                throw IOException(httpError(code))
             }
             response
         }
+    }
+
+    /** 网络抖动与 5xx 自动重试一次；4xx（含风控）直接抛出明确提示。 */
+    private inline fun <T> withRetry(block: () -> T): T {
+        var attempt = 0
+        while (true) {
+            try {
+                return block()
+            } catch (error: IOException) {
+                attempt += 1
+                if (attempt >= MAX_ATTEMPTS || !isRetryable(error)) throw error
+                Thread.sleep(RETRY_DELAY_MS * attempt)
+            }
+        }
+    }
+
+    private fun isRetryable(error: IOException): Boolean {
+        val message = error.message.orEmpty()
+        val status = Regex("HTTP (\\d+)").find(message)?.groupValues?.get(1)?.toIntOrNull()
+        return status == null || status >= 500
+    }
+
+    private fun httpError(code: Int): String = when (code) {
+        429 -> "请求过于频繁，请稍后再试"
+        460 -> "网易云触发了风控校验，请稍后重试"
+        in 500..599 -> "网易云服务繁忙（HTTP $code），已自动重试"
+        else -> "网易云请求失败：HTTP $code"
+    }
 
     private fun buildCookieHeader(cookies: Map<String, String>): String {
         val parts = mutableListOf("os=pc", "appver=8.9.70")
@@ -420,6 +454,8 @@ class NeteaseApi {
 
     companion object {
         const val PROVIDER = "netease"
+        private const val MAX_ATTEMPTS = 2
+        private const val RETRY_DELAY_MS = 400L
         private const val PRESET_KEY = "0CoJUm6Qyw8W8jud"
         private const val RSA_MODULUS =
             "00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7"

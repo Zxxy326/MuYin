@@ -32,6 +32,7 @@ import tv.music.player.core.lyrics.LyricsRepository
 import tv.music.player.core.lyrics.SourceLyrics
 import tv.music.player.core.playback.DemoTrack
 import tv.music.player.core.playback.PlaybackController
+import tv.music.player.core.playback.PlaybackPersistence
 import tv.music.player.core.playback.PlaybackService
 import tv.music.player.core.playback.PlaybackUrlCache
 import tv.music.player.core.playback.StreamUrlValidator
@@ -101,6 +102,7 @@ class AppContainer(context: Context) {
         smbFactory = smbFactory,
         settingsProvider = { latestSettings },
         sourcesProvider = { availableSources() },
+        persistence = PlaybackPersistence(appContext),
     )
     val account = AccountStore(appContext)
     val companionBridge = CompanionBridge()

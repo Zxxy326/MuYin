@@ -85,6 +85,12 @@ import tv.music.player.ui.components.Keycap
 import tv.music.player.ui.components.LocalCapsuleHost
 import tv.music.player.ui.components.ScreenHeader
 import tv.music.player.ui.components.SkeletonBox
+import tv.music.player.ui.components.StageGlass
+import tv.music.player.ui.components.StageGlassSoft
+import tv.music.player.ui.components.StageHeading
+import tv.music.player.ui.components.StageTextSecondary
+import tv.music.player.ui.components.StageTextShadow
+import tv.music.player.ui.components.StageTextTertiary
 import tv.music.player.ui.components.TvBackdrop
 import tv.music.player.ui.components.TvIcon
 import tv.music.player.ui.components.TvSafeArea
@@ -361,6 +367,35 @@ fun SearchScreen(
                         },
                     )
                     Spacer(Modifier.height(18.dp))
+                } else {
+                    StageHeading(
+                        kicker = "SEARCH",
+                        title = "搜索",
+                        subtitle = if (pinyinMode) {
+                            "拼音九宫格 · 全拼或首字母"
+                        } else {
+                            "数字九宫格 · 数字键直接输入"
+                        },
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Keycap("MENU")
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                when {
+                                    results != null -> "歌曲操作"
+                                    pinyinMode -> "拼音输入"
+                                    else -> "数字输入"
+                                },
+                                style = TextStyle(
+                                    fontFamily = TvFonts.family,
+                                    fontSize = 10.5.sp,
+                                    shadow = StageTextShadow,
+                                ),
+                                color = StageTextTertiary,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(2.dp))
                 }
                 Row(Modifier.weight(1f)) {
                     Column(
@@ -408,8 +443,8 @@ fun SearchScreen(
                         )
                         Text(
                             "输入后按搜索：QQ 音乐提供元数据，本机 LX 音源脚本解析播放地址。",
-                            style = TvType.caption,
-                            color = TvColors.TextTertiary,
+                            style = TvType.caption.copy(shadow = StageTextShadow),
+                            color = StageTextTertiary,
                         )
                     }
                     Spacer(Modifier.width(24.dp))
@@ -467,24 +502,29 @@ private fun QueryPanel(query: String, caretAlpha: Float, modeLabel: String) {
     TvSurface(
         modifier = Modifier.fillMaxWidth().height(104.dp),
         shape = RoundedCornerShape(18.dp),
-        baseColor = Color.White.copy(alpha = 0.045f),
+        baseColor = StageGlass,
+        borderColor = Color.White.copy(alpha = 0.08f),
     ) {
         Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     "搜索词 · $modeLabel",
                     style = TvType.overline,
-                    color = TvColors.TextTertiary,
+                    color = StageTextTertiary,
                 )
                 Spacer(Modifier.weight(1f))
-                Text("最多 24 字符", style = TvType.overline, color = TvColors.TextTertiary)
+                Text("最多 24 字符", style = TvType.overline, color = StageTextTertiary)
             }
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = query.ifEmpty { "输入歌名 / 歌手" },
-                    style = TvType.display.copy(fontSize = 34.sp, lineHeight = 40.sp),
-                    color = if (query.isEmpty()) TvColors.TextTertiary else TvColors.TextPrimary,
+                    style = TvType.display.copy(
+                        fontSize = 34.sp,
+                        lineHeight = 40.sp,
+                        shadow = StageTextShadow,
+                    ),
+                    color = if (query.isEmpty()) Color.White.copy(alpha = 0.42f) else Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -509,15 +549,20 @@ private fun SearchSectionTitle(title: String, hint: String? = null) {
                 lineHeight = 22.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = (-0.2).sp,
+                shadow = StageTextShadow,
             ),
-            color = TvColors.TextPrimary,
+            color = Color.White,
         )
         if (hint != null) {
             Spacer(Modifier.width(8.dp))
             Text(
                 hint,
-                style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.5.sp),
-                color = TvColors.TextTertiary,
+                style = TextStyle(
+                    fontFamily = TvFonts.family,
+                    fontSize = 10.5.sp,
+                    shadow = StageTextShadow,
+                ),
+                color = StageTextTertiary,
             )
         }
     }
@@ -583,7 +628,11 @@ private fun HistoryWords(
             )
         }
         if (history.isEmpty()) {
-            Text("暂无搜索记录", style = TvType.caption, color = TvColors.TextTertiary)
+            Text(
+                "暂无搜索记录",
+                style = TvType.caption.copy(shadow = StageTextShadow),
+                color = StageTextTertiary,
+            )
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 history.take(4).forEachIndexed { index, word ->
@@ -609,7 +658,8 @@ private fun SearchChip(
     TvSurface(
         modifier = Modifier.width(100.dp).height(34.dp),
         shape = RoundedCornerShape(50),
-        baseColor = Color.White.copy(alpha = 0.05f),
+        baseColor = StageGlass,
+        borderColor = Color.White.copy(alpha = 0.1f),
         focusedScale = 1.05f,
         glowSize = 10.dp,
         group = group,
@@ -619,8 +669,8 @@ private fun SearchChip(
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
                 text,
-                style = TvType.caption,
-                color = TvColors.TextSecondary,
+                style = TvType.caption.copy(shadow = StageTextShadow),
+                color = Color.White.copy(alpha = 0.84f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -675,7 +725,8 @@ private fun T9Panel(
     TvSurface(
         modifier = Modifier.fillMaxSize(),
         shape = RoundedCornerShape(18.dp),
-        baseColor = Color.White.copy(alpha = 0.035f),
+        baseColor = StageGlass,
+        borderColor = Color.White.copy(alpha = 0.06f),
     ) {
         Column(Modifier.fillMaxSize().padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -685,14 +736,19 @@ private fun T9Panel(
                         fontFamily = TvFonts.family,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
+                        shadow = StageTextShadow,
                     ),
-                    color = TvColors.TextPrimary,
+                    color = Color.White,
                 )
                 Spacer(Modifier.weight(1f))
                 Text(
                     if (pinyinMode) "连按同键换字母 · MENU 切换" else "方向键移动 · OK 输入",
-                    style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.sp),
-                    color = TvColors.TextTertiary,
+                    style = TextStyle(
+                        fontFamily = TvFonts.family,
+                        fontSize = 10.sp,
+                        shadow = StageTextShadow,
+                    ),
+                    color = StageTextTertiary,
                 )
             }
             Spacer(Modifier.weight(1f))
@@ -764,7 +820,8 @@ private fun T9Button(
     TvSurface(
         modifier = modifier.height(56.dp),
         shape = RoundedCornerShape(12.dp),
-        baseColor = Color.White.copy(alpha = 0.05f),
+        baseColor = StageGlass,
+        borderColor = Color.White.copy(alpha = 0.06f),
         focusedScale = 1.04f,
         glowSize = 10.dp,
         group = group,
@@ -782,8 +839,9 @@ private fun T9Button(
                     fontFamily = TvFonts.family,
                     fontSize = if (key.special) 13.sp else 21.sp,
                     fontWeight = if (key.special) FontWeight.Medium else FontWeight.SemiBold,
+                    shadow = StageTextShadow,
                 ),
-                color = if (key.special) TvColors.TextSecondary else TvColors.TextPrimary,
+                color = if (key.special) StageTextSecondary else Color.White,
             )
             if (key.letters.isNotEmpty()) {
                 Text(
@@ -792,8 +850,9 @@ private fun T9Button(
                         fontFamily = TvFonts.family,
                         fontSize = 9.sp,
                         letterSpacing = 1.2.sp,
+                        shadow = StageTextShadow,
                     ),
-                    color = TvColors.TextTertiary,
+                    color = StageTextTertiary,
                 )
             }
         }
@@ -828,13 +887,17 @@ private fun ResultsPanel(
     }
     Column(Modifier.fillMaxSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("搜索结果", style = TvType.title, color = TvColors.TextPrimary)
+            Text(
+                "搜索结果",
+                style = TvType.title.copy(shadow = StageTextShadow),
+                color = Color.White,
+            )
             Spacer(Modifier.width(8.dp))
             Text(
                 if (total > tracks.size) "已加载 ${tracks.size} / $total 首 · 第 $page 页"
                 else "${tracks.size} 首 · QQ 音乐",
-                style = TvType.caption,
-                color = TvColors.TextTertiary,
+                style = TvType.caption.copy(shadow = StageTextShadow),
+                color = StageTextTertiary,
             )
             Spacer(Modifier.weight(1f))
             ActionChip(
@@ -884,8 +947,8 @@ private fun ResultsPanel(
         if (tracks.isEmpty()) {
             Text(
                 "没有找到歌曲，换个关键词试试",
-                style = TvType.body,
-                color = TvColors.TextSecondary,
+                style = TvType.body.copy(shadow = StageTextShadow),
+                color = StageTextSecondary,
                 modifier = Modifier.padding(top = 24.dp),
             )
         } else {
@@ -894,7 +957,7 @@ private fun ResultsPanel(
                 contentPadding = PaddingValues(vertical = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                itemsIndexed(tracks) { index, track ->
+                itemsIndexed(tracks, key = { _, track -> trackKey(track) }) { index, track ->
                     ResultRow(
                         track = track,
                         group = group,
@@ -915,7 +978,8 @@ private fun ResultsPanel(
                         TvSurface(
                             modifier = Modifier.fillMaxWidth().height(52.dp),
                             shape = RoundedCornerShape(14.dp),
-                            baseColor = TvColors.SurfaceElevated.copy(alpha = 0.7f),
+                            baseColor = StageGlass,
+                            borderColor = Color.White.copy(alpha = 0.08f),
                             focusedScale = 1.02f,
                             glowSize = 10.dp,
                             group = group,
@@ -928,22 +992,22 @@ private fun ResultsPanel(
                             ) {
                                 Text(
                                     if (loadingMore) "正在加载第 ${page + 1} 页…" else "加载更多",
-                                    style = TvType.label,
+                                    style = TvType.label.copy(shadow = StageTextShadow),
                                     color = LocalTvAccent.current,
                                 )
                                 Spacer(Modifier.weight(1f))
                                 Text(
                                     if (total > tracks.size) "还有 ${total - tracks.size} 首" else "继续加载",
-                                    style = TvType.caption,
-                                    color = TvColors.TextTertiary,
+                                    style = TvType.caption.copy(shadow = StageTextShadow),
+                                    color = StageTextTertiary,
                                 )
                             }
                         }
                     } else {
                         Text(
                             "已加载全部 ${tracks.size} 首",
-                            style = TvType.caption,
-                            color = TvColors.TextTertiary,
+                            style = TvType.caption.copy(shadow = StageTextShadow),
+                            color = StageTextTertiary,
                             modifier = Modifier.padding(vertical = 14.dp),
                         )
                     }
@@ -964,7 +1028,8 @@ private fun ResultRow(
     TvSurface(
         modifier = Modifier.fillMaxWidth().height(68.dp),
         shape = RoundedCornerShape(14.dp),
-        baseColor = TvColors.Surface.copy(alpha = 0.62f),
+        baseColor = StageGlass,
+        borderColor = Color.White.copy(alpha = 0.07f),
         focusedScale = 1.03f,
         glowSize = 10.dp,
         group = group,
@@ -981,23 +1046,23 @@ private fun ResultRow(
             Column(Modifier.weight(1f)) {
                 Text(
                     track.title,
-                    style = TvType.label,
-                    color = TvColors.TextPrimary,
+                    style = TvType.label.copy(shadow = StageTextShadow),
+                    color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     "${track.artist} · ${track.album}",
-                    style = TvType.caption,
-                    color = TvColors.TextSecondary,
+                    style = TvType.caption.copy(shadow = StageTextShadow),
+                    color = StageTextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
             Text(
                 formatDuration(track.durationMs),
-                style = TvType.caption,
-                color = TvColors.TextTertiary,
+                style = TvType.caption.copy(shadow = StageTextShadow),
+                color = StageTextTertiary,
             )
             Spacer(Modifier.width(10.dp))
             TvIcon(Icons.Rounded.PlayArrow, Modifier.size(20.dp), tint = LocalTvAccent.current)
@@ -1009,9 +1074,17 @@ private fun ResultRow(
 private fun LoadingResults() {
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("搜索中", style = TvType.title, color = TvColors.TextPrimary)
+            Text(
+                "搜索中",
+                style = TvType.title.copy(shadow = StageTextShadow),
+                color = Color.White,
+            )
             Spacer(Modifier.width(8.dp))
-            Text("正在连接 QQ 音乐…", style = TvType.caption, color = TvColors.TextTertiary)
+            Text(
+                "正在连接 QQ 音乐…",
+                style = TvType.caption.copy(shadow = StageTextShadow),
+                color = StageTextTertiary,
+            )
         }
         repeat(4) {
             SkeletonBox(Modifier.fillMaxWidth().height(68.dp), RoundedCornerShape(14.dp))

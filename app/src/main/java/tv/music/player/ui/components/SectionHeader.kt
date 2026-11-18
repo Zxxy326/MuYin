@@ -12,6 +12,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
@@ -41,6 +44,7 @@ fun SectionHeader(
                 lineHeight = 22.sp,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                 letterSpacing = (-0.2).sp,
+                shadow = Shadow(Color.Black.copy(alpha = 0.5f), Offset(0f, 1.5f), 8f),
             ),
             color = TvColors.TextPrimary,
         )
@@ -51,8 +55,9 @@ fun SectionHeader(
                 style = androidx.compose.ui.text.TextStyle(
                     fontFamily = tv.music.player.core.theme.TvFonts.family,
                     fontSize = 10.5.sp,
+                    shadow = Shadow(Color.Black.copy(alpha = 0.45f), Offset(0f, 1f), 6f),
                 ),
-                color = TvColors.TextTertiary,
+                color = Color.White.copy(alpha = 0.42f),
                 modifier = Modifier.widthIn(max = 420.dp),
             )
         }

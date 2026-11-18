@@ -1,7 +1,13 @@
 package tv.music.player.ui.home
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +40,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -60,12 +67,17 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.tv.material3.Text
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import tv.music.player.core.focus.TvFocusGroup
 import tv.music.player.core.focus.TvSurface
 import tv.music.player.core.focus.rememberTvFocusGroup
+import tv.music.player.core.account.AccountStore
 import tv.music.player.core.library.LibraryStore
 import tv.music.player.core.library.libraryKey
+import tv.music.player.core.lyrics.LyricLine
+import tv.music.player.core.lyrics.Lyrics
 import tv.music.player.core.lyrics.LyricsRepository
 import tv.music.player.core.lyrics.LyricsState
 import tv.music.player.core.playback.DemoCatalog
@@ -75,13 +87,14 @@ import tv.music.player.core.theme.LocalTvAccent
 import tv.music.player.core.theme.TvColors
 import tv.music.player.core.theme.TvFonts
 import tv.music.player.core.theme.rememberTrackCoverArt
+import tv.music.player.ui.components.StageBackdrop
 import tv.music.player.ui.components.TvIcon
 import tv.music.player.ui.navigation.TvRoute
 
 private val ActionOrder = listOf("hero:play", "hero:prev", "hero:next", "hero:fav", "hero:player")
 private val TextShadow = Shadow(Color.Black.copy(alpha = 0.5f), Offset(0f, 2f), 12f)
 private val CreditLine = Regex(
-    """^(作词|作曲|编曲|制作人|监制|混音|母带|录音|吉他|贝斯|鼓|和声|弦乐|统筹|出品|发行|词|曲|OP|SP)\s*[:：]""",
+    """^(作词|作曲|编曲|制作人|监制|混音|母带|录音|吉他|贝斯|鼓|和声|弦乐|统筹|出品|发行|词|曲|OP|SP)[^:：]{0,24}[:：]""",
     RegexOption.IGNORE_CASE,
 )
 
@@ -89,6 +102,7 @@ private val CreditLine = Regex(
 fun HomeTab(
     playback: PlaybackController,
     library: LibraryStore,
+    account: AccountStore,
     lyricsRepository: LyricsRepository,
     lyricOffsetMs: Int,
     navController: NavHostController,
@@ -98,29 +112,50 @@ fun HomeTab(
     val scope = rememberCoroutineScope()
     val recent by library.recent.collectAsStateWithLifecycle()
     val favorites by library.favorites.collectAsStateWithLifecycle()
-    val snapshot by playback.state.collectAsStateWithLifecycle()
+    val accountState by account.state.collectAsStateWithLifecycle()
+    val daily = accountState.dailySongs
 
-    val isLive = snapshot.track.usesPlayer
-    val isPlaying = isLive && snapshot.isPlaying
-    val heroTrack = if (isLive) snapshot.track else recent.firstOrNull() ?: DemoCatalog.tracks.first()
+    LaunchedEffect(accountState.netease != null) {
+        account.loadDailyRecommend()
+    }
+
+    var liveTrack by remember { mutableStateOf<DemoTrack?>(null) }
+    var livePlaying by remember { mutableStateOf(false) }
+    LaunchedEffect(playback) {
+        playback.state
+            .map { state -> state.track.takeIf { it.usesPlayer } to state.isPlaying }
+            .distinctUntilChanged()
+            .collect { (track, playing) ->
+                liveTrack = track
+                livePlaying = playing
+            }
+    }
+    val isLive = liveTrack != null
+    val isPlaying = isLive && livePlaying
+    val heroTrack = liveTrack ?: daily.firstOrNull() ?: recent.firstOrNull() ?: DemoCatalog.tracks.first()
     val heroKey = heroTrack.libraryKey()
     val isFavorite = favorites.any { it.libraryKey() == heroKey }
     val rawGuess = remember(recent, favorites) { buildGuessTracks(recent, favorites) }
     val guessTracks = remember(rawGuess, heroKey) {
         rawGuess.filter { it.libraryKey() != heroKey }.ifEmpty { rawGuess }
     }
-    val guessSubtitle = if (recent.isEmpty()) "播放后自动推荐" else "根据最近播放 · ${guessTracks.size} 首"
+    val dailyRail = remember(daily, heroKey) {
+        daily.filter { it.libraryKey() != heroKey }.ifEmpty { daily }
+    }
+    val railTracks = if (daily.isNotEmpty()) dailyRail else guessTracks
+    val railTitle = if (daily.isNotEmpty()) "每日推荐" else "猜你喜欢"
+    val railSubtitle = when {
+        daily.isNotEmpty() -> "今日为你更新 · ${railTracks.size} 首"
+        accountState.dailyLoading -> "正在同步每日推荐…"
+        recent.isNotEmpty() -> "根据最近播放 · ${guessTracks.size} 首"
+        else -> "播放后自动推荐"
+    }
 
     var lyricsState by remember(heroTrack.id) { mutableStateOf<LyricsState?>(null) }
     LaunchedEffect(heroTrack.id) {
         lyricsState = lyricsRepository.load(heroTrack)
     }
-    val lyricLine = if (isLive) {
-        (lyricsState as? LyricsState.Ready)?.lyrics?.let { lyrics ->
-            val index = lyrics.indexAt(snapshot.positionMs, lyricOffsetMs.toLong()).coerceAtLeast(0)
-            lyrics.lines.getOrNull(index)?.text?.takeIf { it.isNotBlank() }
-        }
-    } else null
+    val heroLyrics = (lyricsState as? LyricsState.Ready)?.lyrics
 
     val meta = if (heroTrack.album.isBlank() || heroTrack.album == heroTrack.title) {
         heroTrack.artist
@@ -139,14 +174,13 @@ fun HomeTab(
         else -> "开始播放"
     }
     val description = when {
-        isLive -> lyricLine?.takeIf { !CreditLine.containsMatchIn(it) }
-            ?: "来自 ${heroTrack.album.ifBlank { heroTrack.artist }}"
+        isLive -> "来自 ${heroTrack.album.ifBlank { heroTrack.artist }}"
         recent.isNotEmpty() -> "从上次听到的地方继续 · 按 OK 播放"
         else -> "从推荐歌曲开始 · 按 OK 播放"
     }
 
     fun startHero() {
-        playback.play(heroTrack, (listOf(heroTrack) + guessTracks).distinctBy { it.libraryKey() })
+        playback.play(heroTrack, (listOf(heroTrack) + railTracks).distinctBy { it.libraryKey() })
     }
 
     fun primary() {
@@ -162,7 +196,7 @@ fun HomeTab(
     }
 
     fun playFromRail(track: DemoTrack) {
-        playback.play(track, guessTracks)
+        playback.play(track, railTracks)
         navController.navigate(TvRoute.Player.route) { launchSingleTop = true }
     }
 
@@ -170,15 +204,15 @@ fun HomeTab(
     var railMoving by remember { mutableStateOf(false) }
 
     fun focusRailAnimated(index: Int) {
-        if (guessTracks.isEmpty() || railMoving) return
-        val target = index.coerceIn(0, guessTracks.lastIndex)
+        if (railTracks.isEmpty() || railMoving) return
+        val target = index.coerceIn(0, railTracks.lastIndex)
         railMoving = true
         scope.launch {
             try {
                 if (railState.layoutInfo.visibleItemsInfo.none { it.index == target }) {
                     railState.scrollToItem(target)
                 }
-                group.focusWhenReady("rail:$target", 900L)
+                group.focusWhenReady("rail:$target", 450L)
             } finally {
                 railMoving = false
             }
@@ -215,7 +249,7 @@ fun HomeTab(
                         true
                     }
                     Key.DirectionRight -> {
-                        if (index < guessTracks.lastIndex) focusRailAnimated(index + 1)
+                        if (index < railTracks.lastIndex) focusRailAnimated(index + 1)
                         true
                     }
                     else -> false
@@ -230,39 +264,7 @@ fun HomeTab(
             .fillMaxSize()
             .onPreviewKeyEvent { handleKey(it) }
     ) {
-        Crossfade(
-            targetState = heroTrack,
-            animationSpec = tween(500),
-            label = "home-poster",
-        ) { track ->
-            Image(
-                bitmap = rememberTrackCoverArt(track).image,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.horizontalGradient(
-                    0f to Color(0xE605060A),
-                    0.38f to Color(0xB805060A),
-                    0.72f to Color(0x2605060A),
-                    1f to Color(0x6605060A),
-                )
-            )
-        )
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.verticalGradient(
-                    0f to Color(0x8C05060A),
-                    0.3f to Color(0x1405060A),
-                    0.58f to Color(0x0D05060A),
-                    0.8f to Color(0x8C05060A),
-                    1f to Color(0xF205060A),
-                )
-            )
-        )
+        StageBackdrop(heroTrack)
 
         Column(Modifier.fillMaxSize().padding(horizontal = 28.dp)) {
             Spacer(Modifier.height(112.dp))
@@ -285,7 +287,7 @@ fun HomeTab(
                         color = Color.White.copy(alpha = 0.72f),
                     )
                 }
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(10.dp))
                 Text(
                     heroTrack.title,
                     style = TextStyle(
@@ -300,7 +302,7 @@ fun HomeTab(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(8.dp))
                 Text(
                     meta,
                     style = TextStyle(
@@ -312,20 +314,15 @@ fun HomeTab(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    description,
-                    style = TextStyle(
-                        fontFamily = TvFonts.family,
-                        fontSize = 14.sp,
-                        lineHeight = 21.sp,
-                        shadow = TextShadow,
-                    ),
-                    color = Color.White.copy(alpha = 0.68f),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+                Spacer(Modifier.height(12.dp))
+                HeroDescription(
+                    playback = playback,
+                    lyrics = heroLyrics,
+                    lyricOffsetMs = lyricOffsetMs,
+                    live = isLive,
+                    fallback = description,
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(26.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TvSurface(
                         modifier = Modifier.width(132.dp).height(44.dp),
@@ -398,7 +395,7 @@ fun HomeTab(
             Spacer(Modifier.weight(1f))
             Row(Modifier.fillMaxWidth().height(32.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "猜你喜欢",
+                    railTitle,
                     style = TextStyle(
                         fontFamily = TvFonts.family,
                         fontSize = 20.sp,
@@ -411,7 +408,7 @@ fun HomeTab(
                 )
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    guessSubtitle,
+                    railSubtitle,
                     style = TextStyle(
                         fontFamily = TvFonts.family,
                         fontSize = 11.sp,
@@ -428,7 +425,7 @@ fun HomeTab(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(0.dp),
             ) {
-                itemsIndexed(guessTracks) { index, track ->
+                itemsIndexed(railTracks, key = { _, track -> track.libraryKey() }) { index, track ->
                     PosterTrackCard(
                         index = index,
                         track = track,
@@ -440,6 +437,102 @@ fun HomeTab(
             Spacer(Modifier.height(10.dp))
         }
     }
+}
+
+@Composable
+private fun HeroDescription(
+    playback: PlaybackController,
+    lyrics: Lyrics?,
+    lyricOffsetMs: Int,
+    live: Boolean,
+    fallback: String,
+) {
+    val position by produceState(0L, playback) {
+        playback.state
+            .map { it.positionMs }
+            .distinctUntilChanged()
+            .collect { value = it }
+    }
+    val sungLines = remember(lyrics) {
+        lyrics?.lines
+            ?.filter { it.text.isNotBlank() && !CreditLine.containsMatchIn(it.text) }
+            .orEmpty()
+    }
+    val activeIndex = if (live && sungLines.isNotEmpty()) {
+        activeLineIndex(sungLines, position + lyricOffsetMs)
+    } else {
+        -1
+    }
+    if (activeIndex < 0) {
+        Text(
+            fallback,
+            style = TextStyle(
+                fontFamily = TvFonts.family,
+                fontSize = 14.sp,
+                lineHeight = 22.sp,
+                shadow = TextShadow,
+            ),
+            color = Color.White.copy(alpha = 0.62f),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        return
+    }
+    AnimatedContent(
+        targetState = activeIndex,
+        transitionSpec = {
+            (slideInVertically(tween(240)) { it / 2 } + fadeIn(tween(240))) togetherWith
+                (slideOutVertically(tween(240)) { -it / 2 } + fadeOut(tween(160)))
+        },
+        label = "heroLyric",
+    ) { index ->
+        val currentLine = sungLines.getOrNull(index) ?: sungLines.last()
+        val nextLine = sungLines.getOrNull(index + 1)
+        Column {
+            Text(
+                currentLine.text,
+                style = TextStyle(
+                    fontFamily = TvFonts.family,
+                    fontSize = 15.sp,
+                    lineHeight = 23.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    shadow = TextShadow,
+                ),
+                color = Color.White.copy(alpha = 0.94f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                nextLine?.text.orEmpty(),
+                style = TextStyle(
+                    fontFamily = TvFonts.family,
+                    fontSize = 13.sp,
+                    lineHeight = 20.sp,
+                    shadow = TextShadow,
+                ),
+                color = Color.White.copy(alpha = 0.4f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+private fun activeLineIndex(lines: List<LyricLine>, positionMs: Long): Int {
+    var low = 0
+    var high = lines.lastIndex
+    var result = -1
+    while (low <= high) {
+        val mid = (low + high) ushr 1
+        if (lines[mid].timeMs <= positionMs) {
+            result = mid
+            low = mid + 1
+        } else {
+            high = mid - 1
+        }
+    }
+    return result
 }
 
 @Composable
@@ -476,7 +569,7 @@ private fun PosterTrackCard(
 ) {
     val accent = LocalTvAccent.current
     var focused by remember(track.libraryKey()) { mutableStateOf(false) }
-    val cover = rememberTrackCoverArt(track)
+    val cover = rememberTrackCoverArt(track, maxSize = 320, needAccent = false)
     TvSurface(
         modifier = Modifier.width(150.dp).height(128.dp),
         shape = RoundedCornerShape(12.dp),

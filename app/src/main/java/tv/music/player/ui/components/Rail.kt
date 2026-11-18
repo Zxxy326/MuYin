@@ -34,7 +34,7 @@ fun <T> TvRail(
         horizontalArrangement = Arrangement.spacedBy(spacing),
         contentPadding = contentPadding,
     ) {
-        itemsIndexed(items) { index, item ->
+        itemsIndexed(items, key = { index, _ -> "$keyPrefix:$index" }) { index, item ->
             content(index, item, "$keyPrefix:$index")
         }
     }

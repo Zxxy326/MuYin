@@ -23,6 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +50,12 @@ import tv.music.player.core.theme.rememberCoverArt
 import tv.music.player.ui.components.ActionChip
 import tv.music.player.ui.components.MainTabBar
 import tv.music.player.ui.components.SectionHeader
+import tv.music.player.ui.components.StageGlass
+import tv.music.player.ui.components.StageGlassSoft
+import tv.music.player.ui.components.StageHeading
+import tv.music.player.ui.components.StageTextSecondary
+import tv.music.player.ui.components.StageTextShadow
+import tv.music.player.ui.components.StageTextTertiary
 import tv.music.player.ui.components.TrackArtwork
 import tv.music.player.ui.components.TvBackdrop
 import tv.music.player.ui.components.TvIcon
@@ -69,7 +76,6 @@ fun PlaylistsScreen(
 ) {
     val group = rememberTvFocusGroup("playlists")
     val accountState by account.state.collectAsStateWithLifecycle()
-    val snapshot by playback.state.collectAsStateWithLifecycle()
     val playlists = accountState.playlists
     val recommended = accountState.recommended
     val square = accountState.square
@@ -79,9 +85,14 @@ fun PlaylistsScreen(
     val railGap = if (embedded) 14.dp else 16.dp
     val railPadding = if (embedded) PaddingValues(vertical = 6.dp) else PaddingValues(vertical = 20.dp, horizontal = 26.dp)
 
+    var refreshedOnce by rememberSaveable { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
-        account.refresh()
-        account.refreshRecommended()
+        if (!refreshedOnce) {
+            refreshedOnce = true
+            account.refresh()
+            account.refreshRecommended()
+        }
         if (square.isEmpty()) account.loadSquare(squareCat)
         val target = when {
             recommended.isNotEmpty() -> "rec:0"
@@ -102,7 +113,7 @@ fun PlaylistsScreen(
             if (!embedded) MainTabBar(
                 active = "playlists",
                 group = group,
-                nowPlaying = snapshot.track.title.takeIf { snapshot.track.usesPlayer },
+                nowPlaying = null,
                 onHome = { navController.navigate(TvRoute.Home.route) { popUpTo(TvRoute.Home.route); launchSingleTop = true } },
                 onPlaylists = {},
                 onMine = { navController.navigate(TvRoute.Mine.route) { popUpTo(TvRoute.Home.route); launchSingleTop = true } },
@@ -111,36 +122,23 @@ fun PlaylistsScreen(
                 modifier = Modifier.padding(horizontal = 26.dp),
             )
             if (!embedded) Spacer(Modifier.height(14.dp))
-            Row(
-                Modifier.fillMaxWidth().height(44.dp).padding(horizontal = gutter),
-                verticalAlignment = Alignment.CenterVertically,
+            StageHeading(
+                kicker = "PLAYLISTS",
+                title = "歌单",
+                subtitle = "分类热门 · 我的收藏与推荐",
+                modifier = Modifier.padding(horizontal = gutter),
             ) {
-                Column {
-                    Text(
-                        "歌单",
-                        style = TextStyle(
-                            fontFamily = TvFonts.family,
-                            fontSize = 24.sp,
-                            lineHeight = 28.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = (-0.3).sp,
-                        ),
-                        color = TvColors.TextPrimary,
-                    )
-                    Text(
-                        "分类热门 · 我的收藏与推荐",
-                        style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
-                        color = TvColors.TextSecondary,
-                    )
-                }
-                Spacer(Modifier.weight(1f))
                 Text(
                     if (playlists.isEmpty()) "登录后同步我的歌单" else "${playlists.size} 个我的歌单",
-                    style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.5.sp),
-                    color = TvColors.TextTertiary,
+                    style = TextStyle(
+                        fontFamily = TvFonts.family,
+                        fontSize = 10.5.sp,
+                        shadow = StageTextShadow,
+                    ),
+                    color = StageTextTertiary,
                 )
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(4.dp))
             LazyColumn(
                 Modifier.fillMaxWidth().weight(1f),
                 contentPadding = PaddingValues(bottom = 8.dp),
@@ -195,14 +193,22 @@ fun PlaylistsScreen(
                         when {
                             squareLoading -> Text(
                                 "正在加载「$squareCat」歌单…",
-                                style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
-                                color = TvColors.TextTertiary,
+                                style = TextStyle(
+                                    fontFamily = TvFonts.family,
+                                    fontSize = 11.sp,
+                                    shadow = StageTextShadow,
+                                ),
+                                color = StageTextTertiary,
                                 modifier = Modifier.padding(horizontal = gutter, vertical = 8.dp),
                             )
                             square.isEmpty() -> Text(
                                 "「$squareCat」暂无歌单，换个分类试试。",
-                                style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
-                                color = TvColors.TextTertiary,
+                                style = TextStyle(
+                                    fontFamily = TvFonts.family,
+                                    fontSize = 11.sp,
+                                    shadow = StageTextShadow,
+                                ),
+                                color = StageTextTertiary,
                                 modifier = Modifier.padding(horizontal = gutter, vertical = 8.dp),
                             )
                             else -> TvRail(
@@ -231,16 +237,19 @@ fun PlaylistsScreen(
                             Box(
                                 Modifier.fillMaxWidth().height(60.dp)
                                     .padding(top = 8.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Color.White.copy(alpha = 0.03f))
-                                    .border(1.dp, Color.White.copy(alpha = 0.07f), RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(StageGlass)
                                     .padding(horizontal = 16.dp),
                                 contentAlignment = Alignment.CenterStart,
                             ) {
                                 Text(
                                     "还没有歌单。到「更多 → 管理账号」登录网易云 / QQ 后自动同步。",
-                                    style = TextStyle(fontFamily = TvFonts.family, fontSize = 11.sp),
-                                    color = TvColors.TextTertiary,
+                                    style = TextStyle(
+                                        fontFamily = TvFonts.family,
+                                        fontSize = 11.sp,
+                                        shadow = StageTextShadow,
+                                    ),
+                                    color = StageTextSecondary,
                                 )
                             }
                         } else {
@@ -276,7 +285,8 @@ private fun PlaylistCard(
     TvSurface(
         modifier = Modifier.size(width = 150.dp, height = 188.dp),
         shape = RoundedCornerShape(16.dp),
-        baseColor = if (focused) Color.White.copy(alpha = 0.05f) else Color.Transparent,
+        baseColor = if (focused) Color.White.copy(alpha = 0.08f) else Color.Transparent,
+        borderColor = Color.Transparent,
         focusedScale = 1.03f,
         glowSize = 12.dp,
         group = group,
@@ -319,15 +329,21 @@ private fun PlaylistCard(
                     fontSize = 13.5.sp,
                     lineHeight = 17.sp,
                     fontWeight = FontWeight.SemiBold,
+                    shadow = StageTextShadow,
                 ),
-                color = TvColors.TextPrimary,
+                color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 if (pl.trackCount > 0) "${pl.trackCount} 首" else "推荐歌单",
-                style = TextStyle(fontFamily = TvFonts.family, fontSize = 10.5.sp, lineHeight = 14.sp),
-                color = TvColors.TextTertiary,
+                style = TextStyle(
+                    fontFamily = TvFonts.family,
+                    fontSize = 10.5.sp,
+                    lineHeight = 14.sp,
+                    shadow = StageTextShadow,
+                ),
+                color = StageTextSecondary,
                 maxLines = 1,
             )
         }
